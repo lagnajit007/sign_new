@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Zap, Flame, Target, Clock, Trophy, Star, Users, BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import { ChevronRight, Zap, Flame, Target, Clock, Trophy, Star, Users, BookOpen, ArrowRight, Sparkles, Bell } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { getTimeOfDay } from "@/utils/date-utils";
@@ -154,7 +154,11 @@ export default async function Dashboard() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
       {/* ── User header bar ── */}
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-3">
+        <button className="relative p-2.5 bg-[#EAE4FF] rounded-lg hover:bg-[#EAE4FF]/70 transition-colors">
+          <Bell className="w-5 h-5 text-[#7E7A93]" />
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF7A59] rounded-full flex items-center justify-center text-[10px] text-white font-bold">3</span>
+        </button>
         <Link href="/dashboard/profile">
           <div className="px-3 py-2 flex items-center gap-3 bg-[#EAE4FF] rounded-lg cursor-pointer hover:bg-[#EAE4FF] transition-colors">
             <span className="text-gray-600 font-medium text-sm">{firstName}</span>
