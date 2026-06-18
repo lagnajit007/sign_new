@@ -1,0 +1,18 @@
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_XXXXX
+CLERK_SECRET_KEY=sk_test_XXXXX
+
+# Clerk URLs
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+
+# Recognition backend (Flask) base URL — defaults to http://127.0.0.1:5000 in dev
+NEXT_PUBLIC_RECOGNITION_API_URL=http://127.0.0.1:5000
+
+# Database (Supabase Postgres)
+# DATABASE_URL = pooled connection (pgbouncer, port 6543) used at runtime
+# DIRECT_URL   = direct connection (port 5432) used for migrations
+DATABASE_URL=postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres

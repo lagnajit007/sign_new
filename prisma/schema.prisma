@@ -1,0 +1,133 @@
+// Prisma schema for SignQuest AI (Sanjog) persistence layer.
+// Datasource: Supabase Postgres. DATABASE_URL is the pooled (pgbouncer) URL used
+// at runtime; DIRECT_URL is the direct connection used for migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Local mirror of a Clerk user, keyed by Clerk's user id.
+/// Created lazily on the first authenticated API request (see src/lib/user.ts).
+model User {
+  id             String   @id @default(cuid())
+  clerkId        String   @unique
+  email          String?
+  name           String?
+  avatarId       Int      @default(1)
+  xp             Int      @default(0)
+  level          Int      @default(1)
+  streakDays     Int      @default(0)
+  lastActiveDate DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  signProgress   SignProgress[]
+  attempts       RecognitionAttempt[]
+  achievements   UserAchievement[]
+  challenges     UserChallenge[]
+
+  @@index([xp(sort: Desc)])
+}
+
+/// Aggregate progress for a single sign (e.g. "A", "7") for one user.
+model SignProgress {
+  id           String    @id @default(cuid())
+  userId       String
+  signLabel    String
+  lessonType   String // "alphabet" | "number"
+  bestAccuracy Float     @default(0)
+  attempts     Int       @default(0)
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, signLabel])
+  @@index([userId])
+}
+
+/// Append-only log of every recognition attempt. Powers accuracy, recent
+/// activity, weekly activity charts, and weak-sign analytics.
+model RecognitionAttempt {
+  id             String   @id @default(cuid())
+  userId         String
+  signLabel      String
+  lessonType     String
+  predictedLabel String
+  confidence     Float
+  correct        Boolean
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/// Catalog of achievements (seeded). User unlock state lives in UserAchievement.
+model Achievement {
+  id            String  @id @default(cuid())
+  key           String  @unique
+  name          String
+  description   String
+  category      String
+  icon          String
+  color         String
+  xpReward      Int     @default(0)
+  criteriaType  String // e.g. "lessons_completed", "streak_days", "perfect_session", "signs_completed", "manual"
+  criteriaValue Int     @default(0)
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  progress      Int      @default(0)
+  unlockedAt    DateTime?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+}
+
+/// Catalog of challenges (seeded). User progress lives in UserChallenge.
+model Challenge {
+  id          String @id @default(cuid())
+  key         String @unique
+  name        String
+  description String
+  category    String
+  difficulty  String
+  icon        String
+  color       String
+  rewardXp    Int    @default(0)
+  goal        Int    @default(1)
+  period      String // "daily" | "weekly" | "monthly" | "none"
+
+  users UserChallenge[]
+}
+
+model UserChallenge {
+  id          String    @id @default(cuid())
+  userId      String
+  challengeId String
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}

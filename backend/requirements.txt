@@ -1,0 +1,13 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+flask==2.3.2
+flask-cors==4.0.0
+gunicorn==21.2.0
+
+# ── Env & config ──────────────────────────────────────────────────────────────
+python-dotenv==1.0.0
+
+# ── ML / inference ────────────────────────────────────────────────────────────
+numpy==1.26.0
+scikit-learn==1.4.2       # required by the pickled sklearn model
+mediapipe==0.10.21
+tensorflow==2.16.1

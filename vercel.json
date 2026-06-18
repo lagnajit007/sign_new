@@ -1,0 +1,24 @@
+{
+  "buildCommand": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_build-time-fallback next build",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "builds": [
+    {
+      "src": "next.config.mjs",
+      "use": "@vercel/next"
+    }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "env": {
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_build-time-fallback"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_build-time-fallback"
+    }
+  }
+} 
