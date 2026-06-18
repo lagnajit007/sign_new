@@ -1,7 +1,10 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRef, useEffect } from 'react';
 import { CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import gsap from 'gsap';
+import Button from '@/components/Button';
 
 export type FeedbackType = 'correct' | 'incorrect' | 'no-hand' | 'idle' | 'error';
 
@@ -64,6 +67,25 @@ export default function FeedbackCard({ type, message, confidence, xpEarned, targ
   const config = feedbackConfig[type];
   const Icon = config.icon;
   const randomPositive = positiveMessages[Math.floor(Math.random() * positiveMessages.length)];
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!cardRef.current) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+
+    if (type === 'correct') {
+      gsap.fromTo(cardRef.current,
+        { scale: 0.8, opacity: 0, rotate: -5 },
+        { scale: 1, opacity: 1, rotate: 0, duration: 0.4, ease: 'back.out(2)' },
+      );
+    } else if (type === 'incorrect') {
+      gsap.fromTo(cardRef.current,
+        { x: -8, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.3, ease: 'power2.out' },
+      );
+    }
+  }, [type]);
 
   return (
     <AnimatePresence mode="wait">
@@ -73,6 +95,7 @@ export default function FeedbackCard({ type, message, confidence, xpEarned, targ
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.2 }}
+        ref={cardRef}
         className={`rounded-xl border ${config.bg} ${config.border} p-4`}
       >
         <div className="flex items-start gap-3">
@@ -107,13 +130,9 @@ export default function FeedbackCard({ type, message, confidence, xpEarned, targ
               </p>
             )}
             {type === 'incorrect' && onTryAgain && (
-              <button
-                onClick={onTryAgain}
-                className="mt-2 text-xs text-[#7D54FF] hover:text-[#6840E0] font-medium flex items-center gap-1"
-              >
-                <RefreshCw className="w-3 h-3" />
+              <Button variant="ghost" size="sm" icon={RefreshCw} onClick={onTryAgain}>
                 Try Again
-              </button>
+              </Button>
             )}
           </div>
         </div>

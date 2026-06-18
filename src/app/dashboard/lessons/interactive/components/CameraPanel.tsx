@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { Camera, CameraOff, RefreshCw, Play, AlertTriangle, ShieldAlert } from 'lucide-react';
+import Button from '@/components/Button';
 import { CameraInitLoader, ButtonLoader } from '@/components/loaders/ProcessLoaders';
 
 export type CameraState = 'off' | 'requesting' | 'active' | 'stopped' | 'denied' | 'error';
@@ -41,7 +42,7 @@ export default function CameraPanel({
       {cameraState === 'active' && (
         <div className="relative w-full h-full">
           <video
-            ref={videoRef}
+            ref={videoRef as React.Ref<HTMLVideoElement>}
             autoPlay
             playsInline
             muted
@@ -51,7 +52,7 @@ export default function CameraPanel({
             style={{ display: 'block', backgroundColor: '#000' }}
           />
           <canvas
-            ref={canvasRef}
+            ref={canvasRef as React.Ref<HTMLCanvasElement>}
             width={640}
             height={480}
             className="absolute inset-0 w-full h-full pointer-events-none"
@@ -69,13 +70,9 @@ export default function CameraPanel({
           </div>
           <p className="text-lg font-medium mb-1">Camera Stopped</p>
           <p className="text-sm text-gray-400 mb-6">Your camera has been turned off</p>
-          <button
-            onClick={onStart}
-            className="bg-[#7D54FF] text-white px-6 py-2.5 rounded-full hover:bg-[#6840E0] transition-colors flex items-center gap-2 font-medium"
-          >
-            <Camera className="w-4 h-4" />
+          <Button variant="primary" icon={Camera} onClick={onStart}>
             Start Camera
-          </button>
+          </Button>
         </div>
       )}
 
@@ -91,23 +88,16 @@ export default function CameraPanel({
           <p className="text-sm text-gray-400 text-center mb-8 max-w-xs">
             Enable your camera to start practicing sign language with real-time AI feedback
           </p>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Camera}
             onClick={onStart}
-            disabled={isModelLoading}
-            className="bg-[#7D54FF] text-white px-8 py-3 rounded-full hover:bg-[#6840E0] transition-colors flex items-center gap-2 font-medium disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-[#7D54FF]/25"
+            loading={isModelLoading}
+            className="shadow-lg shadow-[#7D54FF]/25"
           >
-            {isModelLoading ? (
-              <>
-                <ButtonLoader size={16} />
-                Loading Model…
-              </>
-            ) : (
-              <>
-                <Camera className="w-5 h-5" />
-                Start Camera
-              </>
-            )}
-          </button>
+            {isModelLoading ? "Loading Model…" : "Start Camera"}
+          </Button>
           {isModelLoading && (
             <div className="mt-6">
               <CameraInitLoader message="Initializing Sign Recognition" />
@@ -137,13 +127,9 @@ export default function CameraPanel({
             We need camera access to recognize your signs. Please update your browser settings to allow camera access for this site.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={onRestart}
-              className="bg-white text-gray-900 px-5 py-2.5 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-2 font-medium"
-            >
-              <RefreshCw className="w-4 h-4" />
+            <Button variant="secondary" icon={RefreshCw} onClick={onRestart}>
               Try Again
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -157,19 +143,12 @@ export default function CameraPanel({
           <p className="text-lg font-bold mb-2">Camera Error</p>
           <p className="text-sm text-gray-300 text-center mb-2 max-w-sm">{cameraError}</p>
           <div className="flex flex-col sm:flex-row gap-3 mt-4">
-            <button
-              onClick={onRestart}
-              className="bg-white text-gray-900 px-5 py-2.5 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-2 font-medium"
-            >
-              <RefreshCw className="w-4 h-4" />
+            <Button variant="secondary" icon={RefreshCw} onClick={onRestart}>
               Retry Camera
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="border border-white/30 text-white px-5 py-2.5 rounded-full hover:bg-white/10 transition-colors"
-            >
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
               Refresh Page
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -180,13 +159,9 @@ export default function CameraPanel({
 function ManualPlayButton({ onClick }: { onClick: () => void }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-50">
-      <button
-        onClick={onClick}
-        className="bg-[#7D54FF] text-white px-6 py-3 rounded-full hover:bg-[#6840E0] transition-colors text-lg font-semibold flex items-center gap-2 shadow-lg"
-      >
-        <Play className="w-5 h-5" />
+      <Button variant="primary" size="lg" icon={Play} onClick={onClick} className="text-lg shadow-lg">
         Click to Enable Camera
-      </button>
+      </Button>
     </div>
   );
 }

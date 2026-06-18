@@ -8,11 +8,7 @@ import { getOrCreateUser } from "@/lib/user";
 import { computeUserStats } from "@/lib/stats";
 import { prisma } from "@/lib/prisma";
 import { levelForXp, nextLevelXp, totalXpForLevel } from "@/lib/gamification";
-import {
-  StatCardSkeleton,
-  LessonCardSkeleton,
-  SidebarLeaderboardSkeleton,
-} from "@/components/skeletons/SkeletonCard";
+import Button from "@/components/Button";
 
 export const dynamic = "force-dynamic";
 
@@ -227,12 +223,9 @@ export default async function Dashboard() {
             <p className="text-sm text-[#7E7A93] mb-4">
               Complete your first sign to start earning XP, streaks, and achievements.
             </p>
-            <Link
-              href="/dashboard/lessons/interactive"
-              className="inline-flex items-center px-4 py-2 bg-[#7D54FF] text-white rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none text-sm hover:bg-[#6840E0] transition-colors"
-            >
-              Try Interactive Practice <ChevronRight className="w-4 h-4 ml-1" />
-            </Link>
+            <Button variant="primary" size="sm" href="/dashboard/lessons/interactive" icon={ChevronRight} iconPosition="right">
+              Try Interactive Practice
+            </Button>
           </div>
         )}
       </div>

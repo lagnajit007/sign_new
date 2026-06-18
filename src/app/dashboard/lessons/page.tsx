@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { BookOpen, Trophy, Search, ChevronRight } from "lucide-react"
+import { BookOpen, Trophy, Search, ChevronRight, CheckCircle, RotateCcw } from "lucide-react"
+import Button from "@/components/Button"
+import KpiCard from "@/components/KpiCard"
 
 interface CompletionItem {
   id: number
@@ -138,15 +140,9 @@ export default function LessonsPage() {
               <h2 className="text-white text-2xl font-bold mb-1">Practice Live with AI</h2>
               <p className="text-white/80 text-sm">Show a sign on camera and get instant feedback.</p>
             </div>
-            <Link
-              href="/dashboard/lessons/interactive"
-              className="bg-white text-[#7D54FF] px-6 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-colors flex items-center gap-2 shrink-0"
-            >
+            <Button variant="secondary" size="lg" href="/dashboard/lessons/interactive" icon={ChevronRight} iconPosition="right">
               Start Now
-              <div className="bg-[#7D54FF] rounded-full w-6 h-6 flex items-center justify-center">
-                <ChevronRight className="w-4 h-4 text-white" />
-              </div>
-            </Link>
+            </Button>
           </div>
         </div>
 
@@ -184,12 +180,13 @@ export default function LessonsPage() {
               <div className="text-center py-10">
                 <div className="text-4xl mb-3">🔍</div>
                 <p className="text-[#7E7A93] mb-3">No lessons match your search.</p>
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={() => { setSearchQuery(""); setActiveCategory("All Lessons") }}
-                  className="px-4 py-2 bg-[#7D54FF] text-white rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none text-sm"
                 >
                   Clear filters
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -256,16 +253,8 @@ export default function LessonsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-[#FAF7FF] p-3 rounded-lg">
-            <div className="text-sm text-[#7E7A93]">Completed</div>
-            <div className="text-xl font-bold text-[#2D1B69]">{loading ? "—" : lessonsCompleted}</div>
-            <div className="text-xs text-[#7E7A93]">Lessons</div>
-          </div>
-          <div className="bg-[#FAF7FF] p-3 rounded-lg">
-            <div className="text-sm text-[#7E7A93]">Remaining</div>
-            <div className="text-xl font-bold text-[#2D1B69]">{loading ? "—" : totalLessons - lessonsCompleted}</div>
-            <div className="text-xs text-[#7E7A93]">Lessons</div>
-          </div>
+          <KpiCard icon={CheckCircle} label="Completed" value={loading ? "—" : lessonsCompleted} color="green" subtitle="Lessons" loading={loading} />
+          <KpiCard icon={RotateCcw} label="Remaining" value={loading ? "—" : totalLessons - lessonsCompleted} color="purple" subtitle="Lessons" loading={loading} />
           <div className="bg-[#FAF7FF] p-3 rounded-lg col-span-2">
             <div className="text-sm text-[#7E7A93] mb-2">By Category</div>
             {completionData.map((c) => (

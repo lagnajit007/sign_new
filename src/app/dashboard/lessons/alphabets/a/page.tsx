@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle, XCircle, Camera, CameraOff, Play } from "lucide-react"
+import Button from "@/components/Button"
 
 // TypeScript interfaces for hand landmarks
 interface HandLandmark {
@@ -235,10 +236,9 @@ export default function LessonPage() {
   return (
     <div className="flex-1 p-6 overflow-auto">
       <div className="flex items-center mb-6">
-        <Link href="/dashboard/lessons" className="flex items-center text-[#7E7A93] hover:text-[#7D54FF]">
-          <ArrowLeft className="w-5 h-5 mr-2" />
+        <Button variant="ghost" size="sm" href="/dashboard/lessons" icon={ArrowLeft}>
           Back to Lessons
-        </Link>
+        </Button>
       </div>
 
       <div className="bg-white rounded-xl p-6 mb-6">
@@ -297,12 +297,9 @@ export default function LessonPage() {
                     />
                   </div>
                   <p className="text-center mb-4">Enable your camera to practice signing</p>
-                  <button
-                    onClick={startCamera}
-                    className="bg-[#7D54FF] text-white px-6 py-2 rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none hover:bg-opacity-90"
-                  >
+                  <Button variant="primary" onClick={startCamera} icon={Camera}>
                     Start Camera
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -325,12 +322,9 @@ export default function LessonPage() {
                         </div>
                         <h3 className="text-xl font-bold text-[#2D1B69] mb-2">Great Job!</h3>
                         <p className="text-[#7E7A93] mb-4">You've successfully signed the letter A!</p>
-                        <button
-                          onClick={continueToNextLesson}
-                          className="bg-[#7D54FF] text-white px-6 py-2 rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none hover:bg-opacity-90 w-full"
-                        >
+                        <Button variant="primary" className="w-full" onClick={continueToNextLesson}>
                           Continue to Next Lesson
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -345,12 +339,9 @@ export default function LessonPage() {
                         <p className="text-[#7E7A93] mb-4">
                           Your sign wasn't quite right. Check the example and try again.
                         </p>
-                        <button
-                          onClick={resetLesson}
-                          className="bg-[#7D54FF] text-white px-6 py-2 rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none hover:bg-opacity-90 w-full"
-                        >
+                        <Button variant="primary" className="w-full" onClick={resetLesson}>
                           Try Again
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -364,18 +355,12 @@ export default function LessonPage() {
                   Position your hand in the frame and make the sign for "A"
                 </p>
                 <div className="flex gap-4">
-                  <button
-                    onClick={stopCamera}
-                    className="border border-[#EAE4FF] px-6 py-2 rounded-lg hover:bg-gray-50"
-                  >
+                  <Button variant="outline" onClick={stopCamera} icon={CameraOff}>
                     Stop Camera
-                  </button>
-                  <button
-                    onClick={startRecording}
-                    className="bg-[#7D54FF] text-white px-6 py-2 rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none hover:bg-opacity-90"
-                  >
+                  </Button>
+                  <Button variant="primary" onClick={startRecording} icon={Play}>
                     Capture Sign
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

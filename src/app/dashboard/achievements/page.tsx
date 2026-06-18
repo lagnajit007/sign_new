@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   Trophy,
@@ -15,6 +15,9 @@ import {
   ArrowUpRight,
   Sparkles,
 } from "lucide-react"
+import Button from "@/components/Button"
+import ErrorState from "@/components/ErrorState"
+import KpiCard from "@/components/KpiCard"
 import {
   AchievementCardSkeleton,
   SkeletonBox,
@@ -49,20 +52,23 @@ export default function AchievementsPage() {
   // fallback, then replaced with the user's real unlock state from the API.
   const [achievements, setAchievements] = useState(() => INITIAL_ACHIEVEMENTS)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchAchievements = useCallback(() => {
     let active = true
+    setError(null)
+    setIsLoading(true)
     fetch("/api/achievements")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (active && data?.achievements) setAchievements(data.achievements)
       })
-      .catch(() => {})
+      .catch(() => { if (active) setError("Failed to load achievements. Please try again.") })
       .finally(() => { if (active) setIsLoading(false) })
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [])
+
+  useEffect(fetchAchievements, [fetchAchievements])
 
   // Categories for filtering
   const categories = [
@@ -166,15 +172,13 @@ export default function AchievementsPage() {
                   className="pl-9 pr-4 py-2 bg-white border border-[#EAE4FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7D54FF] focus:border-transparent w-full md:w-64 text-sm"
                 />
               </div>
-              <button
+              <Button
+                variant={showFilters ? "primary" : "outline"}
+                size="md"
+                icon={Filter}
                 onClick={() => setShowFilters(!showFilters)}
-                className={`p-2 ${
-                  showFilters ? "bg-[#7D54FF] text-white" : "bg-white text-[#7E7A93]"
-                } rounded-lg hover:bg-opacity-90 flex items-center justify-center transition-colors`}
                 aria-label="Toggle filters"
-              >
-                <Filter className="w-5 h-5" />
-              </button>
+              />
             </div>
           </div>
 
@@ -313,68 +317,17 @@ export default function AchievementsPage() {
             ))
           ) : (
             <>
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#7E7A93] mb-1">Total Achievements</div>
-                    <div className="text-2xl font-bold text-[#2D1B69]">{totalAchievements}</div>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[#EAE4FF] flex items-center justify-center flex-shrink-0">
-                    <Trophy className="w-6 h-6 text-[#7D54FF]" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#7E7A93] mb-1">Earned</div>
-                    <div className="text-2xl font-bold text-[#2D1B69]">{earnedAchievements}</div>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[#22C55E] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                    <BadgeCheck className="w-6 h-6 text-[#22C55E]" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#7E7A93] mb-1">In Progress</div>
-                    <div className="text-2xl font-bold text-[#2D1B69]">{inProgressAchievements}</div>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[#FFC83D] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                    <Star className="w-6 h-6 text-[#FFC83D]" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#7E7A93] mb-1">Locked</div>
-                    <div className="text-2xl font-bold text-[#2D1B69]">{lockedAchievements}</div>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[#FF7A59] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                    <Lock className="w-6 h-6 text-[#FF7A59]" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF] sm:col-span-2 lg:col-span-1">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-[#7E7A93] mb-1">Total XP Earned</div>
-                    <div className="text-2xl font-bold text-[#2D1B69]">{totalXP}</div>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-[#7D54FF] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-6 h-6 text-[#7D54FF]" />
-                  </div>
-                </div>
-                <div className="mt-2 text-xs text-[#7E7A93]">
-                  {possibleXP > 0 ? Math.round((totalXP / possibleXP) * 100) : 0}% of possible XP
-                </div>
-              </div>
+              <KpiCard icon={Trophy} label="Total Achievements" value={totalAchievements} color="purple" />
+              <KpiCard icon={BadgeCheck} label="Earned" value={earnedAchievements} color="green" />
+              <KpiCard icon={Star} label="In Progress" value={inProgressAchievements} color="yellow" />
+              <KpiCard icon={Lock} label="Locked" value={lockedAchievements} color="orange" />
+              <KpiCard
+                icon={Sparkles}
+                label="Total XP Earned"
+                value={totalXP}
+                color="purple"
+                subtitle={possibleXP > 0 ? `${Math.round((totalXP / possibleXP) * 100)}% of possible XP` : "0% of possible XP"}
+              />
             </>
           )}
         </div>
@@ -497,9 +450,9 @@ export default function AchievementsPage() {
                       <div className="text-xs font-medium bg-[#EAE4FF] text-[#7D54FF] px-2 py-1 rounded-full">
                         +{achievement.xp} XP
                       </div>
-                      <button className="text-xs text-[#7E7A93] flex items-center hover:text-[#7D54FF] transition-colors">
-                        Details <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                      </button>
+                      <span className="text-xs text-[#7E7A93] flex items-center">
+                        <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -507,24 +460,28 @@ export default function AchievementsPage() {
             </div>
           )}
         </div>
+        {/* Error state */}
+        {error && (
+          <div className="mt-6">
+            <ErrorState title="Failed to Load" message={error} onRetry={fetchAchievements} />
+          </div>
+        )}
+
         {/* No achievements found */}
-        {filteredAchievements.length === 0 && (
+        {!error && !isLoading && filteredAchievements.length === 0 && (
           <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-[#EAE4FF]">
             <div className="w-16 h-16 bg-[#FAF7FF] rounded-full flex items-center justify-center mx-auto mb-4">
               <Info className="w-8 h-8 text-[#7E7A93]" />
             </div>
             <h3 className="text-lg font-bold text-[#2D1B69] mb-2">No achievements found</h3>
             <p className="text-[#7E7A93] mb-4">No achievements match your current filter criteria.</p>
-            <button
-              onClick={() => {
-                setAchievementFilter("all")
-                setCategoryFilter("all")
-                setSearchQuery("")
-              }}
-              className="px-4 py-2 bg-[#7D54FF] text-white rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none hover:bg-[#6840E0] transition-colors"
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => { setAchievementFilter("all"); setCategoryFilter("all"); setSearchQuery("") }}
             >
               Reset Filters
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -590,9 +547,9 @@ export default function AchievementsPage() {
             <div className="bg-[#FAF7FF] rounded-xl p-4 text-center">
               <div className="text-2xl mb-2">🏆</div>
               <p className="text-xs text-[#7E7A93]">Complete activities to earn your first badge!</p>
-              <Link href="/dashboard/lessons" className="text-xs text-[#7D54FF] mt-2 inline-block hover:underline">
+              <Button variant="ghost" size="sm" href="/dashboard/lessons">
                 Start a lesson →
-              </Link>
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -611,13 +568,9 @@ export default function AchievementsPage() {
           )}
 
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <Link
-              href="/dashboard/challenges"
-              className="flex items-center justify-center w-full p-3 text-[#7D54FF] border border-[#EAE4FF] bg-[#FAF7FF] rounded-lg hover:bg-[#EAE4FF] transition-colors"
-            >
-              <ArrowUpRight className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="w-full justify-center" href="/dashboard/challenges" icon={ArrowUpRight}>
               View Challenges
-            </Link>
+            </Button>
           </div>
         </div>
       </div>

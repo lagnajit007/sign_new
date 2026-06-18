@@ -1,8 +1,12 @@
 'use client';
 
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Clock, Target, Zap, Award, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import Button from '@/components/Button';
+import KpiCard from '@/components/KpiCard';
+import { triggerCelebration } from '@/lib/animations';
 
 interface CompletionScreenProps {
   accuracy: number;
@@ -34,6 +38,14 @@ export default function CompletionScreen({
     grade === 'B' ? 'text-blue-400' :
     grade === 'C' ? 'text-orange-400' : 'text-red-400';
 
+  const trophyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (achievementsUnlocked > 0 && trophyRef.current) {
+      triggerCelebration(trophyRef.current)
+    }
+  }, [achievementsUnlocked])
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -49,6 +61,7 @@ export default function CompletionScreen({
         {/* Header */}
         <div className="bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] p-6 text-center text-white">
           <motion.div
+            ref={trophyRef}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', damping: 15 }}
@@ -74,10 +87,10 @@ export default function CompletionScreen({
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 p-6">
-          <StatCard icon={Target} label="Accuracy" value={`${accuracy}%`} color="text-green-500" />
-          <StatCard icon={Zap} label="XP Earned" value={`+${xpEarned}`} color="text-[#7D54FF]" />
-          <StatCard icon={Clock} label="Time Taken" value={`${minutes}m ${seconds}s`} color="text-blue-500" />
-          <StatCard icon={Award} label="Signs Mastered" value={`${signsMastered}/${totalSigns}`} color="text-orange-500" />
+          <KpiCard icon={Target} label="Accuracy" value={`${accuracy}%`} color="green" />
+          <KpiCard icon={Zap} label="XP Earned" value={`+${xpEarned}`} color="purple" />
+          <KpiCard icon={Clock} label="Time Taken" value={`${minutes}m ${seconds}s`} color="blue" />
+          <KpiCard icon={Award} label="Signs Mastered" value={`${signsMastered}/${totalSigns}`} color="orange" />
         </div>
 
         {/* Achievements */}
@@ -108,36 +121,23 @@ export default function CompletionScreen({
         </div>
 
         {/* CTA */}
-        <div className="p-6 pt-2">
-          <button
+        <div className="p-6 pt-2 space-y-3">
+          <Button
+            variant="primary"
+            className="w-full !rounded-xl !shadow-none bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF]"
             onClick={onContinue}
-            className="w-full py-3 bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] text-white rounded-xl font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            icon={ArrowRight}
+            iconPosition="right"
           >
             Continue Learning
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          <Link
-            href="/dashboard/lessons"
-            className="block w-full text-center text-sm text-[#7E7A93] hover:text-[#7D54FF] mt-3 transition-colors"
-          >
+          </Button>
+          <Button variant="ghost" className="w-full justify-center" href="/dashboard/lessons">
             Back to Lessons
-          </Link>
+          </Button>
         </div>
       </motion.div>
     </motion.div>
   );
 }
 
-function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
-  return (
-    <div className="bg-[#FAF7FF] rounded-xl p-3 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-lg bg-white flex items-center justify-center ${color}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-      <div>
-        <div className="text-xs text-[#7E7A93]">{label}</div>
-        <div className={`text-lg font-bold ${color}`}>{value}</div>
-      </div>
-    </div>
-  );
-}
+

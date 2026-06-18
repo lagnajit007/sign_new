@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Lightbulb, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import Button from '@/components/Button';
 
 interface LessonPanelProps {
   targetSign: string;
@@ -50,25 +51,25 @@ export default function LessonPanel({
             <p className="text-sm text-[#7E7A93] mt-1">{description}</p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button
+            <Button
+              variant="icon"
+              size="sm"
+              icon={ChevronLeft}
               onClick={onPrevious}
               disabled={currentIndex === 0}
-              className="w-8 h-8 flex items-center justify-center rounded-full border border-[#7D54FF] text-[#7D54FF] hover:bg-[#EAE4FF] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Previous sign"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+            />
             <span className="text-xs font-medium text-[#7E7A93] px-2">
               {currentIndex + 1}/{totalLessons}
             </span>
-            <button
+            <Button
+              variant="icon"
+              size="sm"
+              icon={ChevronRight}
               onClick={onNext}
               disabled={currentIndex === totalLessons - 1}
-              className="w-8 h-8 flex items-center justify-center rounded-full border border-[#7D54FF] text-[#7D54FF] hover:bg-[#EAE4FF] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Next sign"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            />
           </div>
         </div>
 

@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from "next/image";
 import Link from "next/link";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton, useAuth, useUser } from "@clerk/nextjs";
 import { AnimatedTooltip } from "@/components/ui/animated-tooltip";
 import Loader from '@/components/Loader';
+import { useHeroTimeline, useScrollReveal, triggerCelebration } from '@/lib/animations';
 
 export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { isLoaded: isAuthLoaded, userId } = useAuth();
   const { isLoaded: isUserLoaded, user } = useUser();
+  const pageRef = useRef<HTMLDivElement>(null!);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1500);
@@ -23,6 +25,9 @@ export default function LandingPage() {
       window.location.href = '/dashboard';
     }
   }, [isAuthLoaded, isUserLoaded, userId]);
+
+  useHeroTimeline(pageRef, !isLoading)
+  useScrollReveal(pageRef, !isLoading)
 
   const people = [
     { id: 1, name: "Sarah Johnson", designation: "Educator", image: "/Avatar.png" },
@@ -40,7 +45,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div ref={pageRef} className="min-h-screen bg-white">
       {/* Header */}
       <header className="py-4 px-6 flex items-center justify-between max-w-7xl mx-auto">
         <Image src="/sanjog-logo.svg" alt="Sanjog Logo" width={120} height={40} className="object-contain" />
@@ -72,11 +77,11 @@ export default function LandingPage() {
       <section className="py-16 px-6 md:py-20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold text-[#2D1B69] mb-6">
+            <h1 className="hero-title text-4xl md:text-5xl font-bold text-[#2D1B69] mb-6">
               The best place to <span className="text-[#7D54FF]">learn</span><br />
               and <span className="text-[#FFC83D]">play</span> for all
             </h1>
-            <p className="text-[#7E7A93] mb-8 max-w-xl mx-auto">
+            <p className="hero-subtitle text-[#7E7A93] mb-8 max-w-xl mx-auto">
               Discover thousands of fun and interactive activities to build real sign-language skills.
             </p>
 
@@ -88,7 +93,7 @@ export default function LandingPage() {
               <p className="text-xs text-[#7E7A93] mt-2">Join our community of learners</p>
             </div>
 
-            <div className="flex items-center justify-center gap-4 flex-wrap">
+            <div className="hero-cta flex items-center justify-center gap-4 flex-wrap">
               <SignedIn>
                 <Link href="/dashboard">
                   <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] text-white rounded-full hover:opacity-90 transition-opacity">
@@ -118,7 +123,7 @@ export default function LandingPage() {
           </div>
 
           {/* Hero images */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="hero-images grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <div className="transform rotate-[-3deg]">
               <div className="rounded-3xl overflow-hidden shadow-lg aspect-square bg-[#EAE4FF] flex items-center justify-center">
                 <Image src="/mudra.jpg" alt="Signing gesture" width={300} height={300} className="w-full h-full object-cover" />
@@ -139,7 +144,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="py-16 px-6 bg-[#FAF7FF]">
+      <section data-reveal className="py-16 px-6 bg-[#FAF7FF]">
         <div className="max-w-7xl mx-auto">
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-[#2D1B69]">
@@ -147,7 +152,7 @@ export default function LandingPage() {
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-[#ffecf0] p-6 rounded-xl">
+            <div data-reveal-child className="bg-[#ffecf0] p-6 rounded-xl">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-4">
                 <span className="text-xl">🎮</span>
               </div>
@@ -157,7 +162,7 @@ export default function LandingPage() {
               </p>
               <span className="text-xs text-[#7E7A93]">Fun and interactive</span>
             </div>
-            <div className="bg-[#7D54FF] p-6 rounded-xl text-white">
+            <div data-reveal-child className="bg-[#7D54FF] p-6 rounded-xl text-white">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-4">
                 <span className="text-xl">🧠</span>
               </div>
@@ -167,7 +172,7 @@ export default function LandingPage() {
               </p>
               <span className="text-xs text-white/80">Powered by computer vision</span>
             </div>
-            <div className="bg-[#FFC83D] p-6 rounded-xl">
+            <div data-reveal-child className="bg-[#FFC83D] p-6 rounded-xl">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mb-4">
                 <span className="text-xl">👥</span>
               </div>
@@ -182,19 +187,19 @@ export default function LandingPage() {
       </section>
 
       {/* Community */}
-      <section className="py-16 px-6 bg-white">
+      <section data-reveal className="py-16 px-6 bg-white">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-[#2D1B69] mb-6">Join a Thriving Learning Community</h2>
           <p className="text-[#7E7A93] mb-12 max-w-2xl mx-auto">
             Learn alongside thousands of students from around the world who are mastering sign language with Sanjog.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto mb-12">
             {[
               { label: "Registered Learners", value: "3M+" },
               { label: "Practice Activities", value: "5k+" },
               { label: "Signs Covered", value: "80+" },
             ].map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center">
+              <div key={stat.label} data-reveal-child className="flex flex-col items-center">
                 <div className="w-16 h-16 bg-[#EAE4FF] rounded-full flex items-center justify-center mb-3">
                   <span className="text-[#7D54FF] font-bold text-sm">{stat.value}</span>
                 </div>
@@ -220,7 +225,7 @@ export default function LandingPage() {
       </section>
 
       {/* Process */}
-      <section className="py-16 px-6 bg-[#FAF7FF]">
+      <section data-reveal className="py-16 px-6 bg-[#FAF7FF]">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8">
             <h2 className="text-xl font-bold text-[#2D1B69]">
@@ -235,7 +240,7 @@ export default function LandingPage() {
                 { icon: "⚡", title: "Instant feedback", desc: "Know immediately whether your sign was correct — no waiting, no guessing." },
                 { icon: "📈", title: "Progress tracking", desc: "XP, streaks, achievements, and leaderboards keep you motivated every day." },
               ].map((step) => (
-                <div key={step.title} className="flex items-start gap-6">
+                <div key={step.title} data-reveal-child className="flex items-start gap-6">
                   <div className="w-10 h-10 bg-[#EAE4FF] rounded-lg flex items-center justify-center flex-shrink-0 text-lg">
                     {step.icon}
                   </div>

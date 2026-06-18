@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   Puzzle,
@@ -18,6 +18,9 @@ import {
   Sparkles,
   Play,
 } from "lucide-react"
+import Button from "@/components/Button"
+import ErrorState from "@/components/ErrorState"
+import KpiCard from "@/components/KpiCard"
 import { ChallengeCardSkeleton, SkeletonBox } from "@/components/skeletons/SkeletonCard"
 
 interface ChallengeItem {
@@ -47,18 +50,23 @@ export default function ChallengesPage() {
   // Starts empty so the UI shape is preserved while loading.
   const [challenges, setChallenges] = useState<ChallengeItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const fetchChallenges = useCallback(() => {
     let active = true
+    setError(null)
+    setIsLoading(true)
     fetch("/api/challenges")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (active && data?.challenges) setChallenges(data.challenges)
       })
-      .catch(() => {})
+      .catch(() => { if (active) setError("Failed to load challenges. Please try again.") })
       .finally(() => { if (active) setIsLoading(false) })
     return () => { active = false }
   }, [])
+
+  useEffect(fetchChallenges, [fetchChallenges])
 
   // Calculate challenge statistics
   const totalChallenges = challenges.length
@@ -182,15 +190,13 @@ export default function ChallengesPage() {
                   className="pl-9 pr-4 py-2 bg-white border border-[#EAE4FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7D54FF] focus:border-transparent w-full md:w-64 text-sm"
                 />
               </div>
-              <button
+              <Button
+                variant={filtersOpen ? "primary" : "outline"}
+                size="md"
+                icon={Filter}
                 onClick={() => setFiltersOpen(!filtersOpen)}
-                className={`p-2 ${
-                  filtersOpen ? "bg-[#7D54FF] text-white" : "bg-white text-[#7E7A93]"
-                } rounded-lg hover:bg-opacity-90 flex items-center justify-center transition-colors`}
                 aria-label="Toggle filters"
-              >
-                <Filter className="w-5 h-5" />
-              </button>
+              />
             </div>
           </div>
 
@@ -362,53 +368,10 @@ export default function ChallengesPage() {
 
         {/* Challenge Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-[#7E7A93] mb-1">Active Challenges</div>
-                <div className="text-2xl font-bold text-[#2D1B69]">{activeChallenges}</div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-[#EAE4FF] flex items-center justify-center flex-shrink-0">
-                <Puzzle className="w-6 h-6 text-[#7D54FF]" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-[#7E7A93] mb-1">Completed</div>
-                <div className="text-2xl font-bold text-[#2D1B69]">{completedChallenges}</div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-[#22C55E] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="w-6 h-6 text-[#22C55E]" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-[#7E7A93] mb-1">Expiring Soon</div>
-                <div className="text-2xl font-bold text-[#2D1B69]">{expiringChallenges}</div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-[#FF7A59] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                <Clock className="w-6 h-6 text-[#FF7A59]" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-[#EAE4FF]">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-[#7E7A93] mb-1">Total XP Available</div>
-                <div className="text-2xl font-bold text-[#2D1B69]">{totalXP}</div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-[#7D54FF] bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-6 h-6 text-[#7D54FF]" />
-              </div>
-            </div>
-          </div>
+          <KpiCard icon={Puzzle} label="Active Challenges" value={activeChallenges} color="purple" />
+          <KpiCard icon={CheckCircle} label="Completed" value={completedChallenges} color="green" />
+          <KpiCard icon={Clock} label="Expiring Soon" value={expiringChallenges} color="orange" />
+          <KpiCard icon={Sparkles} label="Total XP Available" value={totalXP} color="purple" />
         </div>
 
         {/* Challenge Progress Overview */}
@@ -428,38 +391,24 @@ export default function ChallengesPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-[#FAF7FF] p-3 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <Zap className="w-4 h-4 text-[#FFC83D] flex-shrink-0" />
-                <div className="text-sm text-[#7E7A93]">Daily Challenges</div>
-              </div>
-              <div className="text-lg font-bold text-[#2D1B69]">
-                {challenges.filter((c) => c.category === "daily" && c.completed).length}/
-                {challenges.filter((c) => c.category === "daily").length}
-              </div>
-            </div>
-
-            <div className="bg-[#FAF7FF] p-3 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <Calendar className="w-4 h-4 text-[#FF7A59] flex-shrink-0" />
-                <div className="text-sm text-[#7E7A93]">Weekly Challenges</div>
-              </div>
-              <div className="text-lg font-bold text-[#2D1B69]">
-                {challenges.filter((c) => c.category === "weekly" && c.completed).length}/
-                {challenges.filter((c) => c.category === "weekly").length}
-              </div>
-            </div>
-
-            <div className="bg-[#FAF7FF] p-3 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <Award className="w-4 h-4 text-[#5EC8FF] flex-shrink-0" />
-                <div className="text-sm text-[#7E7A93]">Monthly Challenges</div>
-              </div>
-              <div className="text-lg font-bold text-[#2D1B69]">
-                {challenges.filter((c) => c.category === "monthly" && c.completed).length}/
-                {challenges.filter((c) => c.category === "monthly").length}
-              </div>
-            </div>
+            <KpiCard
+              icon={Zap}
+              label="Daily Challenges"
+              value={`${challenges.filter((c) => c.category === "daily" && c.completed).length}/${challenges.filter((c) => c.category === "daily").length}`}
+              color="yellow"
+            />
+            <KpiCard
+              icon={Calendar}
+              label="Weekly Challenges"
+              value={`${challenges.filter((c) => c.category === "weekly" && c.completed).length}/${challenges.filter((c) => c.category === "weekly").length}`}
+              color="orange"
+            />
+            <KpiCard
+              icon={Award}
+              label="Monthly Challenges"
+              value={`${challenges.filter((c) => c.category === "monthly" && c.completed).length}/${challenges.filter((c) => c.category === "monthly").length}`}
+              color="blue"
+            />
           </div>
         </div>
 
@@ -527,10 +476,10 @@ export default function ChallengesPage() {
                       <div className="text-xs font-medium bg-[#EAE4FF] text-[#7D54FF] px-2 py-1 rounded-full">
                         {challenge.reward}
                       </div>
-                      {!challenge.completed && (
-                        <Link href="/dashboard/lessons/interactive" className="text-xs text-[#7E7A93] flex items-center hover:text-[#7D54FF] transition-colors">
-                          Start Now <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                        </Link>
+                        {!challenge.completed && (
+                        <Button variant="ghost" size="sm" href="/dashboard/lessons/interactive" icon={ChevronRight} iconPosition="right">
+                          Start Now
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -540,20 +489,24 @@ export default function ChallengesPage() {
           )}
         </div>
 
+        {/* Error state */}
+        {error && (
+          <div className="mt-6">
+            <ErrorState title="Failed to Load" message={error} onRetry={fetchChallenges} />
+          </div>
+        )}
+
         {/* No challenges found — only show after load */}
-        {!isLoading && filteredChallenges.length === 0 && (
+        {!error && !isLoading && filteredChallenges.length === 0 && (
           <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-[#EAE4FF]">
             <div className="w-16 h-16 bg-[#FAF7FF] rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-[#7E7A93]" />
             </div>
             <h3 className="text-lg font-bold text-[#2D1B69] mb-2">No challenges found</h3>
             <p className="text-[#7E7A93] mb-4">No challenges match your current filters.</p>
-            <button
-              onClick={() => { setChallengeFilter("all"); setDifficultyFilter("all"); setSearchQuery("") }}
-              className="px-4 py-2 bg-[#7D54FF] text-white rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none hover:bg-[#6840E0] transition-colors"
-            >
+            <Button variant="primary" size="sm" onClick={() => { setChallengeFilter("all"); setDifficultyFilter("all"); setSearchQuery("") }}>
               Reset Filters
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -587,9 +540,9 @@ export default function ChallengesPage() {
           <div className="text-lg font-bold text-[#2D1B69] mb-4">Categories</div>
           <div className="space-y-3">
             {[
-              { label: "Daily",   icon: <Zap className="w-4 h-4 text-[#FFC83D]" />,   bg: "bg-[#FFC83D]", filter: "daily" },
-              { label: "Weekly",  icon: <Calendar className="w-4 h-4 text-[#22C55E]" />, bg: "bg-[#22C55E]", filter: "weekly" },
-              { label: "Monthly", icon: <TrendingUp className="w-4 h-4 text-[#5EC8FF]" />, bg: "bg-[#5EC8FF]", filter: "monthly" },
+              { label: "Daily",   icon: Zap,        color: "text-[#FFC83D]", bg: "bg-[#FFC83D]", filter: "daily" },
+              { label: "Weekly",  icon: Calendar,    color: "text-[#22C55E]", bg: "bg-[#22C55E]", filter: "weekly" },
+              { label: "Monthly", icon: TrendingUp,  color: "text-[#5EC8FF]", bg: "bg-[#5EC8FF]", filter: "monthly" },
             ].map((cat) => (
               <button
                 key={cat.label}
@@ -598,7 +551,7 @@ export default function ChallengesPage() {
               >
                 <div className="flex items-center">
                   <div className={`w-8 h-8 rounded-full ${cat.bg} bg-opacity-20 flex items-center justify-center mr-3`}>
-                    {cat.icon}
+                    <cat.icon className={`w-4 h-4 ${cat.color}`} />
                   </div>
                   <div className="text-sm text-[#2D1B69]">{cat.label}</div>
                 </div>
@@ -618,12 +571,9 @@ export default function ChallengesPage() {
             <div className="bg-[#FAF7FF] rounded-xl p-4 text-center">
               <div className="text-2xl mb-2">🎯</div>
               <p className="text-xs text-[#7E7A93]">Complete a challenge to see it here!</p>
-              <button
-                onClick={() => setChallengeFilter("all")}
-                className="text-xs text-[#7D54FF] mt-2 hover:underline"
-              >
-                Browse challenges →
-              </button>
+                <Button variant="ghost" size="sm" onClick={() => setChallengeFilter("all")}>
+                  Browse challenges →
+                </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -644,13 +594,9 @@ export default function ChallengesPage() {
           )}
 
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <Link
-              href="/dashboard/achievements"
-              className="flex items-center justify-center w-full p-3 text-[#7D54FF] border border-[#EAE4FF] bg-[#FAF7FF] rounded-lg hover:bg-[#EAE4FF] transition-colors"
-            >
-              <ArrowUpRight className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="w-full justify-center" href="/dashboard/achievements" icon={ArrowUpRight}>
               View Achievements
-            </Link>
+            </Button>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import { ArrowLeft, Maximize2, Minimize2, Camera, CameraOff, RefreshCw, Play } from "lucide-react";
+import Button from "@/components/Button";
 import * as tf from "@tensorflow/tfjs";
 import * as handpose from "@tensorflow-models/handpose";
 import "@tensorflow/tfjs-backend-webgl";
@@ -393,8 +394,6 @@ export default function InteractiveLessonPage() {
 
             const confidence = result.confidence || 0;
             const isCorrect = result.prediction === targetSign && confidence > RECOGNITION_CONFIDENCE_THRESHOLD;
-            setIsCorrectSignShown(isCorrect);
-
             setTotalAttempts((p) => p + 1);
 
             if (isCorrect) {
@@ -603,13 +602,9 @@ export default function InteractiveLessonPage() {
           {/* Top Navigation */}
           <header className="bg-white px-4 lg:px-6 py-3 flex items-center justify-between border-b border-[#EAE4FF] shrink-0">
             <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard/lessons"
-                className="flex items-center text-[#7E7A93] hover:text-[#7D54FF] transition-colors text-sm font-medium"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1.5" />
+              <Button variant="ghost" size="sm" href="/dashboard/lessons" icon={ArrowLeft}>
                 Back to Lessons
-              </Link>
+              </Button>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -621,13 +616,13 @@ export default function InteractiveLessonPage() {
               <div className="bg-[#EAE4FF] text-[#7D54FF] text-xs px-3 py-1.5 rounded-full font-medium">
                 {lessonType === "alphabet" ? "Letter" : "Number"} {currentIndex + 1}/{currentLessons.length}
               </div>
-              <button
+              <Button
+                variant="icon"
+                size="md"
+                icon={isFullscreen ? Minimize2 : Maximize2}
                 onClick={toggleFullscreen}
-                className="p-2 rounded-lg hover:bg-gray-100 text-[#7E7A93]"
                 aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </button>
+              />
             </div>
           </header>
 
@@ -659,12 +654,13 @@ export default function InteractiveLessonPage() {
               <span className="text-orange-500 text-sm">⚠</span>
               <p className="text-sm text-orange-700">
                 {BACKEND_ERROR_TITLE}.{" "}
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => { setBackendConnected(null); checkBackend().then(setBackendConnected); }}
-                  className="underline font-medium hover:text-orange-800"
                 >
                   Retry
-                </button>
+                </Button>
               </p>
             </div>
           )}
@@ -773,46 +769,26 @@ export default function InteractiveLessonPage() {
                   <div className="flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
                       {cameraState === "off" || cameraState === "stopped" ? (
-                        <button
-                          onClick={startCamera}
-                          className="bg-[#7D54FF] text-white px-5 py-2 rounded-full hover:bg-[#6840E0] transition-colors flex items-center gap-2 text-sm font-medium"
-                        >
-                          <Camera className="w-4 h-4" />
+                        <Button variant="primary" size="md" icon={Camera} onClick={startCamera}>
                           Start Camera
-                        </button>
+                        </Button>
                       ) : (
                         <>
-                          <button
-                            onClick={stopCamera}
-                            className="border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors flex items-center gap-2 text-sm"
-                          >
-                            <CameraOff className="w-4 h-4" />
+                          <Button variant="outline" size="sm" icon={CameraOff} onClick={stopCamera}>
                             Stop
-                          </button>
-                          <button
-                            onClick={restartCamera}
-                            className="border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors flex items-center gap-2 text-sm"
-                          >
-                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" icon={RefreshCw} onClick={restartCamera}>
                             Restart
-                          </button>
+                          </Button>
                           {cameraState === "active" && lessonStatus === "idle" && (
-                            <button
-                              onClick={startPractice}
-                              className="bg-green-500 text-white px-5 py-2 rounded-full hover:bg-green-600 transition-colors flex items-center gap-2 text-sm font-medium"
-                            >
-                              <Play className="w-4 h-4" />
+                            <Button variant="primary" size="sm" icon={Play} onClick={startPractice}>
                               Start Practice
-                            </button>
+                            </Button>
                           )}
                           {cameraState === "active" && lessonStatus === "practicing" && (
-                            <button
-                              onClick={tryAgain}
-                              className="border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-colors flex items-center gap-2 text-sm"
-                            >
-                              <RefreshCw className="w-4 h-4" />
+                            <Button variant="outline" size="sm" icon={RefreshCw} onClick={tryAgain}>
                               Reset
-                            </button>
+                            </Button>
                           )}
                         </>
                       )}
