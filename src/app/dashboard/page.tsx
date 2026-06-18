@@ -13,10 +13,28 @@ import Button from "@/components/Button";
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const user = await currentUser();
-  const dbUser = await getOrCreateUser();
+  let user: Awaited<ReturnType<typeof currentUser>> | null = null;
+  let dbUser: Awaited<ReturnType<typeof getOrCreateUser>> | null = null;
+  let userStats: Awaited<ReturnType<typeof computeUserStats>> | null = null;
+  let topUsers: { id: string; name: string | null; xp: number }[] = [];
+  let earnedCount = 0;
 
-  const userStats = dbUser ? await computeUserStats(dbUser.id) : null;
+  try {
+    user = await currentUser();
+    dbUser = await getOrCreateUser();
+    if (dbUser) {
+      userStats = await computeUserStats(dbUser.id);
+    }
+    topUsers = await prisma.user.findMany({ orderBy: { xp: "desc" }, take: 3 });
+    if (dbUser) {
+      earnedCount = await prisma.userAchievement.count({
+        where: { userId: dbUser.id, unlockedAt: { not: null } },
+      });
+    }
+  } catch {
+    // Graceful fallback: render with defaults if Clerk or DB is unavailable
+  }
+
   const xp = dbUser?.xp ?? 0;
   const level = levelForXp(xp);
   const nextLvlXp = nextLevelXp(xp);
@@ -92,8 +110,6 @@ export default async function Dashboard() {
     },
   ];
 
-  // Leaderboard: top users by XP
-  const topUsers = await prisma.user.findMany({ orderBy: { xp: "desc" }, take: 3 });
   const leaderboard =
     topUsers.length > 0
       ? topUsers.map((u, i) => ({
@@ -115,22 +131,14 @@ export default async function Dashboard() {
           },
         ];
 
-  // Earned achievements count for badge display
-  const earnedCount = dbUser
-    ? await prisma.userAchievement.count({ where: { userId: dbUser.id, unlockedAt: { not: null } } })
-    : 0;
-
   const timeOfDay = getTimeOfDay();
-  // Overall progress across alphabets + numbers
   const totalSigns = 36;
   const overallPct = Math.min(100, Math.round(((userStats?.lessonsCompleted ?? 0) / totalSigns) * 100));
   const dashOffset = Math.round(283 - (overallPct / 100) * 283);
 
   return (
     <div className="flex min-h-screen bg-[#FAF7FF]">
-      {/* Main Content */}
       <div className="flex-1 p-6 overflow-auto">
-        {/* User header */}
         <div className="flex justify-end mb-6">
           <Link href="/dashboard/profile">
             <div className="px-3 py-2 flex items-center gap-3 bg-[#EAE4FF] rounded-lg cursor-pointer hover:bg-[#EAE4FF] transition-colors">
@@ -143,7 +151,6 @@ export default async function Dashboard() {
           </Link>
         </div>
 
-        {/* Hero Banner */}
         <div className="bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] rounded-3xl p-8 mb-8 text-white">
           <div className="text-sm font-medium mb-2 opacity-90">ONLINE COURSE</div>
           <h1 className="text-3xl font-bold mb-6 leading-tight">
@@ -160,7 +167,6 @@ export default async function Dashboard() {
           </Link>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {stats.map((stat) => (
             <div key={stat.id} className={`${stat.color} rounded-2xl p-4 text-white`}>
@@ -184,7 +190,6 @@ export default async function Dashboard() {
           ))}
         </div>
 
-        {/* Continue Learning */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-[#2D1B69]">Continue Learning</h2>
@@ -215,7 +220,6 @@ export default async function Dashboard() {
           </div>
         </div>
 
-        {/* Empty state: no activity yet */}
         {lessonsCompleted === 0 && streakDays === 0 && (
           <div className="bg-white rounded-xl p-6 text-center border border-dashed border-[#EAE4FF]">
             <div className="text-4xl mb-3">👋</div>
@@ -230,11 +234,9 @@ export default async function Dashboard() {
         )}
       </div>
 
-      {/* Right Sidebar */}
       <div className="w-[300px] bg-white p-6 hidden lg:block border-l border-gray-100">
         <h2 className="text-xl font-bold text-[#2D1B69] mb-6">Statistics</h2>
 
-        {/* Progress Circle — live */}
         <div className="flex justify-center mb-6">
           <div className="relative">
             <svg className="w-36 h-36" viewBox="0 0 100 100">
@@ -265,7 +267,6 @@ export default async function Dashboard() {
           </div>
         </div>
 
-        {/* Greeting */}
         <div className="text-center mb-6">
           <h3 className="text-lg font-bold text-[#2D1B69] mb-1">
             Good {timeOfDay}, {user?.firstName || "there"} 🔥
@@ -273,7 +274,6 @@ export default async function Dashboard() {
           <p className="text-sm text-[#7E7A93]">Keep signing to hit your daily target!</p>
         </div>
 
-        {/* Badges */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-end gap-1">
@@ -309,7 +309,6 @@ export default async function Dashboard() {
           )}
         </div>
 
-        {/* Leaderboard */}
         <div>
           <h3 className="text-lg font-bold text-[#2D1B69] mb-4">Leaderboard</h3>
 
