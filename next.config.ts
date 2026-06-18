@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
 
   env: {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_fallback-build-key',
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dummy-key-for-build-only',
   },
 
   output: 'standalone',

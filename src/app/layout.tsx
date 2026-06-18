@@ -39,15 +39,9 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-function isValidClerkKey(key?: string): boolean {
-  return Boolean(key && typeof key === 'string' && key.startsWith('pk_') && key.length > 20);
-}
-
 export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
-  // Only pass Clerk key if it's valid; don't use placeholder keys that may be rejected
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const clerkProps = {
-    publishableKey: isValidClerkKey(publishableKey) ? publishableKey : undefined,
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? 'pk_test_dummy-key-for-build-only',
     signInUrl: "/sign-in",
     signUpUrl: "/sign-up",
     afterSignInUrl: "/dashboard",

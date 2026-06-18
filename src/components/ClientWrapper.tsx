@@ -1,18 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import StyledComponentsRegistry from '@/lib/registry';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import GlobalPreloader from '@/components/GlobalPreloader';
 import dynamic from 'next/dynamic';
 
-// Check if Clerk key is valid (basic format check for pk_test_* or pk_live_*)
-function isValidClerkKey(key?: string): boolean {
-  return Boolean(key && typeof key === 'string' && key.startsWith('pk_') && key.length > 20);
-}
-
-// Dynamically import ClerkProvider — SSR disabled to avoid server-side crashes
-// when Clerk keys are missing/invalid in production
+// Dynamically import ClerkProvider with SSR enabled. An error boundary wraps
+// it to catch any initialization failures so Clerk never crashes the page.
 const ClerkProviderWithFallback = dynamic(
   () => import('@clerk/nextjs').then((mod) => {
     const { ClerkProvider } = mod;
@@ -21,10 +16,33 @@ const ClerkProviderWithFallback = dynamic(
     );
   }),
   {
-    ssr: false,
+    ssr: true,
     loading: () => null,
   }
 );
+
+// Guards against ClerkProvider render errors during SSR/CSR. If Clerk fails,
+// child components (Sidebar, etc.) still render without Clerk context, so they
+// must handle missing context gracefully (which Next.js already does for hooks
+// like useAuth — they return default values instead of throwing).
+class ClerkSafeBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback ?? null;
+    }
+    return this.props.children;
+  }
+}
 
 interface ClientWrapperProps {
   children: React.ReactNode;
@@ -32,57 +50,27 @@ interface ClientWrapperProps {
 }
 
 export default function ClientWrapper({ children, clerkProps }: ClientWrapperProps) {
-  const [clerkReady, setClerkReady] = useState(false);
-  const [clerkError, setClerkError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    // Only initialize Clerk on client side after hydration
-    const key = clerkProps?.publishableKey;
-    if (isValidClerkKey(key)) {
-      setClerkReady(true);
-    } else {
-      console.warn('Clerk publishableKey missing or invalid — ClerkProvider will not mount');
-      setClerkError(new Error('Clerk not configured'));
-    }
-  }, [clerkProps?.publishableKey]);
-
-  // Enhanced Clerk props with smarter navigation handling
   const enhancedClerkProps = {
     ...clerkProps,
-    navigate: (to: string) => {
-      if (to.startsWith('/dashboard')) {
-        window.location.href = to;
-      } else {
-        window.location.href = to;
-      }
-    }
+    navigate: (to: string) => { window.location.href = to; }
   };
 
-  // If Clerk isn't ready or key invalid, render children without ClerkProvider
-  // This prevents server-side crashes while keeping the UI functional
-  if (!clerkReady) {
-    return (
-      <StyledComponentsRegistry>
-        <ClientErrorBoundary>
-          <div className="min-h-screen bg-background text-foreground">
-            <GlobalPreloader />
-            {children}
-          </div>
-        </ClientErrorBoundary>
-      </StyledComponentsRegistry>
-    );
-  }
+  const content = (
+    <StyledComponentsRegistry>
+      <ClientErrorBoundary>
+        <div className="min-h-screen bg-background text-foreground">
+          <GlobalPreloader />
+          {children}
+        </div>
+      </ClientErrorBoundary>
+    </StyledComponentsRegistry>
+  );
 
   return (
-    <ClerkProviderWithFallback {...enhancedClerkProps}>
-      <StyledComponentsRegistry>
-        <ClientErrorBoundary>
-          <div className="min-h-screen bg-background text-foreground">
-            <GlobalPreloader />
-            {children}
-          </div>
-        </ClientErrorBoundary>
-      </StyledComponentsRegistry>
-    </ClerkProviderWithFallback>
+    <ClerkSafeBoundary fallback={content}>
+      <ClerkProviderWithFallback {...enhancedClerkProps}>
+        {content}
+      </ClerkProviderWithFallback>
+    </ClerkSafeBoundary>
   );
 } 
