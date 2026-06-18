@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Loader2, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import Button from '@/components/Button';
 
 interface UserProfile {
@@ -54,13 +54,35 @@ export default function EditProfileModal({ open, onClose, profile, onSaved }: Ed
   const [form, setForm] = useState<UserProfile>(profile);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  const isDirty = useCallback(() => {
+    return (
+      form.name !== profile.name ||
+      form.username !== profile.username ||
+      form.bio !== profile.bio ||
+      form.learningGoal !== profile.learningGoal ||
+      form.preferredLang !== profile.preferredLang ||
+      form.timezone !== profile.timezone ||
+      form.avatarId !== profile.avatarId
+    );
+  }, [form, profile]);
 
   useEffect(() => {
     if (open) {
       setForm(profile);
       setStatus('idle');
+      setShowDiscardConfirm(false);
     }
   }, [open, profile]);
+
+  const attemptClose = useCallback(() => {
+    if (isDirty() && status !== 'success') {
+      setShowDiscardConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [isDirty, status, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +124,7 @@ export default function EditProfileModal({ open, onClose, profile, onSaved }: Ed
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+          onClick={(e) => { if (e.target === e.currentTarget) attemptClose(); }}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
@@ -113,7 +135,7 @@ export default function EditProfileModal({ open, onClose, profile, onSaved }: Ed
             {/* Header */}
             <div className="flex items-center justify-between p-6 pb-4 border-b border-[#ECE8FF]">
               <h2 className="text-xl font-bold text-[#2D1B69]">Edit Profile</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-[#7E7A93]">
+              <button onClick={attemptClose} className="p-2 rounded-full hover:bg-gray-100 text-[#7E7A93]">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -219,7 +241,7 @@ export default function EditProfileModal({ open, onClose, profile, onSaved }: Ed
 
               {/* Actions */}
               <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+                <Button type="button" variant="outline" onClick={attemptClose} className="flex-1">
                   Cancel
                 </Button>
                 <Button type="submit" loading={saving} className="flex-1">
@@ -230,6 +252,50 @@ export default function EditProfileModal({ open, onClose, profile, onSaved }: Ed
           </motion.div>
         </motion.div>
       )}
+
+      {/* Discard Changes Confirmation */}
+      <AnimatePresence>
+        {showDiscardConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowDiscardConfirm(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-[#FFC83D]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#2D1B69]">Discard Changes?</h3>
+                  <p className="text-sm text-[#7E7A93]">You have unsaved changes. Are you sure you want to discard them?</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDiscardConfirm(false)}
+                  className="flex-1 px-4 py-2.5 border border-[#ECE8FF] rounded-xl text-sm font-medium text-[#7E7A93] hover:bg-gray-50 transition-colors"
+                >
+                  Keep Editing
+                </button>
+                <button
+                  onClick={() => { setShowDiscardConfirm(false); onClose(); }}
+                  className="flex-1 px-4 py-2.5 bg-[#FF7A59] text-white rounded-xl text-sm font-medium hover:bg-[#e86a4a] transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }

@@ -231,18 +231,30 @@ export default function InteractiveLessonPage() {
         canvasRef.current.height = 480;
       }
 
+      const cameraTimeout = setTimeout(() => {
+        if (isMountedRef.current) {
+          setCameraState("error");
+          setCameraError("Camera startup timed out. Please try again.");
+          cleanupStream();
+        }
+      }, 10000);
+
       await new Promise<void>((resolve, reject) => {
+        let settled = false;
         video.onloadedmetadata = async () => {
+          if (settled) return;
+          clearTimeout(cameraTimeout);
           try {
             await video.play();
+            settled = true;
             resolve();
           } catch {
+            settled = true;
             setNeedsManualPlay(true);
             setCameraState("active");
             reject(new Error("MANUAL_PLAY_NEEDED"));
           }
         };
-        setTimeout(() => reject(new Error("TIMEOUT")), 10000);
       });
 
       if (isMountedRef.current) {
@@ -264,8 +276,7 @@ export default function InteractiveLessonPage() {
         setCameraState("error");
         setCameraError("Camera access requires a secure connection (HTTPS). Please use HTTPS or localhost.");
       } else if (msg === "TIMEOUT") {
-        setCameraState("error");
-        setCameraError("Camera startup timed out. Please try again.");
+        // handled in cameraTimeout above
       } else {
         setCameraState("error");
         setCameraError("An unexpected error occurred. Please try again.");

@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { BookOpen, Trophy, Puzzle, BarChart3, Users, LogOut, Home, Settings } from "lucide-react"
+import { BookOpen, Trophy, Puzzle, BarChart3, Users, LogOut, Home, Settings, AlertTriangle } from "lucide-react"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface SidebarProps {
   isCollapsed?: boolean
@@ -30,6 +31,7 @@ export default function Sidebar({
   const [internalCollapsed, setInternalCollapsed] = useState(propIsCollapsed || false);
   const [logoError, setLogoError] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const isCollapsed = propIsCollapsed !== undefined ? propIsCollapsed : internalCollapsed;
   
@@ -42,7 +44,12 @@ export default function Sidebar({
     onToggle?.();
   }
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmSignOut = async () => {
+    setShowLogoutConfirm(false);
     try {
       await signOut();
       router.push("/");
@@ -56,6 +63,7 @@ export default function Sidebar({
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
 
   return (
+    <> 
     <div className={`bg-white flex flex-col fixed h-screen transition-all duration-500 ease-in-out overflow-hidden z-10 ${
       isCollapsed ? "w-[70px]" : "w-[300px]"
     }`}>
@@ -308,5 +316,50 @@ export default function Sidebar({
         )}
       </div>
     </div>
+
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            style={{ left: 0 }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowLogoutConfirm(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-[#FF7A59]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#2D1B69]">Sign Out</h3>
+                  <p className="text-sm text-[#7E7A93]">Are you sure you want to sign out?</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-4 py-2.5 border border-[#ECE8FF] rounded-xl text-sm font-medium text-[#7E7A93] hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSignOut}
+                  className="flex-1 px-4 py-2.5 bg-[#FF7A59] text-white rounded-xl text-sm font-medium hover:bg-[#e86a4a] transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

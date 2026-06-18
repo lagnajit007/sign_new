@@ -271,14 +271,8 @@ export default function LessonPage() {
 
             <div className="mb-6">
               <h3 className="font-medium text-[#2D1B69] mb-2">Example</h3>
-              <div className="bg-[#FAF7FF] rounded-lg overflow-hidden">
-                <Image
-                  src="/placeholder.svg?height=200&width=300"
-                  alt="ASL Letter A Example"
-                  width={300}
-                  height={200}
-                  className="w-full object-contain"
-                />
+              <div className="bg-[#FAF7FF] rounded-lg overflow-hidden flex items-center justify-center p-8">
+                <span className="text-8xl font-black text-[#7D54FF]">A</span>
               </div>
             </div>
           </div>
@@ -288,13 +282,7 @@ export default function LessonPage() {
               {!cameraActive ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                   <div className="mb-4">
-                    <Image
-                      src="/placeholder.svg?height=100&width=100"
-                      alt="Camera"
-                      width={100}
-                      height={100}
-                      className="opacity-50"
-                    />
+                    <Camera className="w-16 h-16 text-white/50" />
                   </div>
                   <p className="text-center mb-4">Enable your camera to practice signing</p>
                   <Button variant="primary" onClick={startCamera} icon={Camera}>
@@ -372,40 +360,40 @@ export default function LessonPage() {
         <h2 className="text-lg font-bold text-[#2D1B69] mb-4">Next Lessons</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link
-            href="/dashboard/lessons/alphabets/b"
+            href="/dashboard/lessons/interactive"
             className="flex items-center p-3 border border-[#EAE4FF] rounded-lg hover:border-[#7D54FF] transition-colors"
           >
-            <div className="bg-[#ffe9ac] w-12 h-12 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-[#ff2600] text-xl font-bold">B</span>
+            <div className="bg-[#EAE4FF] w-12 h-12 rounded-lg flex items-center justify-center mr-3">
+              <Camera className="w-5 h-5 text-[#7D54FF]" />
             </div>
             <div>
-              <div className="font-medium text-[#2D1B69]">Letter B</div>
-              <div className="text-xs text-[#7E7A93]">Beginner • 2 min</div>
+              <div className="font-medium text-[#2D1B69]">Interactive Practice</div>
+              <div className="text-xs text-[#7E7A93]">AI-powered • Any time</div>
             </div>
           </Link>
 
           <Link
-            href="/dashboard/lessons/alphabets/c"
+            href="/dashboard/lessons"
             className="flex items-center p-3 border border-[#EAE4FF] rounded-lg hover:border-[#7D54FF] transition-colors"
           >
-            <div className="bg-[#ffe9ac] w-12 h-12 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-[#ff2600] text-xl font-bold">C</span>
+            <div className="bg-[#EAE4FF] w-12 h-12 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-[#6840E0] text-xl font-bold">A-Z</span>
             </div>
             <div>
-              <div className="font-medium text-[#2D1B69]">Letter C</div>
-              <div className="text-xs text-[#7E7A93]">Beginner • 2 min</div>
+              <div className="font-medium text-[#2D1B69]">All Alphabets</div>
+              <div className="text-xs text-[#7E7A93]">26 letters to learn</div>
             </div>
           </Link>
 
           <Link
-            href="/dashboard/lessons/alphabets/d"
+            href="/dashboard/lessons/interactive"
             className="flex items-center p-3 border border-[#EAE4FF] rounded-lg hover:border-[#7D54FF] transition-colors"
           >
-            <div className="bg-[#ffe9ac] w-12 h-12 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-[#ff2600] text-xl font-bold">D</span>
+            <div className="bg-[#ccf5d1] w-12 h-12 rounded-lg flex items-center justify-center mr-3">
+              <span className="text-[#22C55E] text-xl font-bold">0-9</span>
             </div>
             <div>
-              <div className="font-medium text-[#2D1B69]">Letter D</div>
+              <div className="font-medium text-[#2D1B69]">Learn Numbers</div>
               <div className="text-xs text-[#7E7A93]">Beginner • 2 min</div>
             </div>
           </Link>
