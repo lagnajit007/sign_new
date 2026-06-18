@@ -6,6 +6,8 @@ import { DASHBOARD_ROUTES, APP_URL } from '@/lib/config';
 // Public routes — everything else requires authentication
 const isPublic = createRouteMatcher([
   '/',
+  '/terms',
+  '/privacy',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/_not-found',

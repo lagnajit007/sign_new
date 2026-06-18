@@ -14,6 +14,8 @@ import {
   BarChart2,
   Download,
 } from "lucide-react"
+import Button from "@/components/Button"
+import KpiCard from "@/components/KpiCard"
 import { StatCardSkeleton, ChartSkeleton } from "@/components/skeletons/SkeletonCard"
 
 const ProgressBar = ({ value, max, color }: { value: number; max: number; color: string }) => {
@@ -92,14 +94,6 @@ export default function ProgressPage() {
   const overallPct     = totalSigns > 0 ? Math.round((completedSigns / totalSigns) * 100) : 0
   const dashOffset     = Math.round(283 - (overallPct / 100) * 283)
 
-  // Stats cards
-  const statCards = [
-    { label: "Total XP",           value: loading ? "—" : (summary?.xp ?? 0).toLocaleString(),            color: "text-[#7D54FF]", bg: "bg-[#EAE4FF]", icon: Award },
-    { label: "Lessons Completed",  value: loading ? "—" : String(summary?.lessonsCompleted ?? 0),           color: "text-[#22C55E]", bg: "bg-[#d4f8dc]", icon: BookOpen },
-    { label: "Accuracy",           value: loading ? "—" : `${summary?.accuracy ?? 0}%`,                    color: "text-[#FF7A59]", bg: "bg-[#ffe9e2]", icon: BarChart2 },
-    { label: "Streak",             value: loading ? "—" : `${summary?.streakDays ?? 0} day${(summary?.streakDays ?? 0) !== 1 ? "s" : ""}`, color: "text-[#FFC83D]", bg: "bg-[#fff8da]", icon: Clock },
-  ]
-
   // Date navigation
   const getDateRangeText = () => {
     const today = new Date(currentDate)
@@ -153,44 +147,25 @@ export default function ProgressPage() {
                 </button>
               ))}
             </div>
-            <button
-              title="Export not yet available"
-              className="p-2 bg-white rounded-lg hover:bg-gray-100 flex items-center justify-center opacity-50 cursor-not-allowed"
-              disabled
-            >
-              <Download className="w-5 h-5 text-[#7E7A93]" />
-            </button>
           </div>
         </div>
 
         {/* Date navigation */}
         <div className="bg-white rounded-xl p-4 mb-6 flex items-center justify-between">
-          <button onClick={() => navigateDate(-1)} className="p-2 rounded-full hover:bg-gray-100" aria-label="Previous date range">
-            <ChevronLeft className="w-5 h-5 text-[#7E7A93]" />
-          </button>
+          <Button variant="icon" size="sm" icon={ChevronLeft} onClick={() => navigateDate(-1)} aria-label="Previous date range" />
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-[#7D54FF]" />
             <span className="font-medium text-[#2D1B69]">{getDateRangeText()}</span>
           </div>
-          <button onClick={() => navigateDate(1)} className="p-2 rounded-full hover:bg-gray-100" aria-label="Next date range">
-            <ChevronRight className="w-5 h-5 text-[#7E7A93]" />
-          </button>
+          <Button variant="icon" size="sm" icon={ChevronRight} onClick={() => navigateDate(1)} aria-label="Next date range" />
         </div>
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {statCards.map((s, i) => (
-            <div key={i} className="bg-white p-4 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-[#7E7A93]">{s.label}</div>
-                <div className={`w-8 h-8 rounded-full ${s.bg} flex items-center justify-center`}>
-                  <s.icon className={`w-4 h-4 ${s.color}`} />
-                </div>
-              </div>
-              <div className={`text-2xl font-bold ${loading ? "text-[#7E7A93]" : "text-[#2D1B69]"}`}>{s.value}</div>
-              {loading && <div className="mt-2 h-1.5 bg-[#FAF7FF] rounded-full w-16 animate-pulse" />}
-            </div>
-          ))}
+          <KpiCard icon={Award} label="Total XP" value={loading ? "—" : (summary?.xp ?? 0).toLocaleString()} color="purple" loading={loading} />
+          <KpiCard icon={BookOpen} label="Lessons Completed" value={loading ? "—" : String(summary?.lessonsCompleted ?? 0)} color="green" loading={loading} />
+          <KpiCard icon={BarChart2} label="Accuracy" value={loading ? "—" : `${summary?.accuracy ?? 0}%`} color="orange" loading={loading} />
+          <KpiCard icon={Clock} label="Streak" value={loading ? "—" : `${summary?.streakDays ?? 0} day${(summary?.streakDays ?? 0) !== 1 ? "s" : ""}`} color="yellow" loading={loading} />
         </div>
 
         {/* Charts */}
@@ -320,19 +295,13 @@ export default function ProgressPage() {
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 {selectedCategory !== "all" && (
-                  <button
-                    onClick={() => setSelectedCategory("all")}
-                    className="px-4 py-2 border border-[#EAE4FF] text-[#7E7A93] rounded-lg text-sm hover:bg-gray-50"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setSelectedCategory("all")}>
                     Show All
-                  </button>
+                  </Button>
                 )}
-                <Link
-                  href="/dashboard/lessons/interactive"
-                  className="px-4 py-2 bg-[#7D54FF] text-white rounded-full shadow-btn transition-transform hover:scale-[1.03] active:translate-y-1 active:shadow-none text-sm hover:bg-[#6840E0]"
-                >
+                <Button variant="primary" size="sm" href="/dashboard/lessons/interactive">
                   Start Practicing
-                </Link>
+                </Button>
               </div>
             </div>
           ) : (
@@ -428,9 +397,9 @@ export default function ProgressPage() {
               <p className="text-xs text-[#7E7A93] mb-2">
                 Use the interactive mode daily to build recognition speed.
               </p>
-              <Link href="/dashboard/lessons/interactive" className="text-xs text-[#7D54FF] flex items-center hover:underline">
-                Practice Now <ChevronRight className="w-3.5 h-3.5 ml-1" />
-              </Link>
+              <Button variant="ghost" size="sm" href="/dashboard/lessons/interactive" icon={ChevronRight} iconPosition="right">
+                Practice Now
+              </Button>
             </div>
             <div className="bg-[#FAF7FF] p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
@@ -440,9 +409,9 @@ export default function ProgressPage() {
               <p className="text-xs text-[#7E7A93] mb-2">
                 Challenges earn bonus XP and help solidify your skills.
               </p>
-              <Link href="/dashboard/challenges" className="text-xs text-[#7D54FF] flex items-center hover:underline">
-                View Challenges <ChevronRight className="w-3.5 h-3.5 ml-1" />
-              </Link>
+              <Button variant="ghost" size="sm" href="/dashboard/challenges" icon={ChevronRight} iconPosition="right">
+                View Challenges
+              </Button>
             </div>
           </div>
         </div>

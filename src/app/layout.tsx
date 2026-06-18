@@ -20,8 +20,8 @@ const poppins = Poppins({
 
 // Define metadata
 export const metadata: Metadata = {
-  title: "Sanjog - Sign Language Learning Platform",
-  description: "A platform for learning sign language",
+  title: "Sanjog - Learn Sign Language With AI-Powered Real-Time Feedback",
+  description: "Practice sign language through your webcam with AI-powered gesture recognition. Get instant feedback, track progress, earn XP, and build communication skills — free and in your browser.",
   icons: [
     { rel: 'icon', url: '/S-logo.svg' }
   ]
@@ -40,9 +40,8 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
-  // Safe clerk configuration for build time
   const clerkProps = {
-    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder-key-for-build-time',
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? 'pk_test_dummy-key-for-build-only',
     signInUrl: "/sign-in",
     signUpUrl: "/sign-up",
     afterSignInUrl: "/dashboard",
