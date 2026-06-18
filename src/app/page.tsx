@@ -11,16 +11,16 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { isLoaded: isAuthLoaded, userId } = useAuth();
   const { isLoaded: isUserLoaded, user } = useUser();
-  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
 
+  // Redirect authenticated users straight to dashboard
   useEffect(() => {
     if (isAuthLoaded && isUserLoaded && userId) {
-      setShowBanner(true);
+      window.location.href = '/dashboard';
     }
   }, [isAuthLoaded, isUserLoaded, userId]);
 
@@ -41,20 +41,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Welcome-back banner for signed-in users */}
-      {showBanner && (
-        <div className="bg-[#7D54FF] text-white py-2 px-6 flex items-center justify-between">
-          <p className="text-sm">
-            Welcome back{user?.firstName ? `, ${user.firstName}` : ''}! Continue your learning journey.
-          </p>
-          <Link href="/dashboard">
-            <button className="bg-white text-[#7D54FF] px-3 py-1 rounded-full text-xs font-medium hover:bg-opacity-90 transition-colors">
-              Go to Dashboard
-            </button>
-          </Link>
-        </div>
-      )}
-
       {/* Header */}
       <header className="py-4 px-6 flex items-center justify-between max-w-7xl mx-auto">
         <Image src="/sanjog-logo.svg" alt="Sanjog Logo" width={120} height={40} className="object-contain" />

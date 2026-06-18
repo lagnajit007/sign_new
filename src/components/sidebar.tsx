@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { BookOpen, Trophy, Puzzle, BarChart3, Users, LogOut, Home } from "lucide-react"
+import { BookOpen, Trophy, Puzzle, BarChart3, Users, LogOut, Home, Settings } from "lucide-react"
 import { useClerk, useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 
@@ -204,13 +204,13 @@ export default function Sidebar({
       </nav>
 
       {/* User Section */}
-      <div className="mt-auto pt-4 px-3 pb-4 transition-all duration-500 ease-in-out">
+      <div className="mt-auto pt-2 px-3 pb-4 transition-all duration-500 ease-in-out">
         {isLoaded ? (
           user ? (
             !isCollapsed ? (
               <>
                 <Link href="/dashboard/profile" passHref>
-                  <div className="flex items-center gap-3 mb-4 p-3 bg-[#FAF7FF] rounded-md cursor-pointer hover:bg-[#EAE4FF] transition-all duration-500 ease-in-out">
+                  <div className="flex items-center gap-3 mb-1 p-3 bg-[#FAF7FF] rounded-md cursor-pointer hover:bg-[#EAE4FF] transition-all duration-500 ease-in-out">
                     <div className="relative">
                       <div className="w-10 h-10 rounded-full overflow-hidden">
                         {avatarError ? (
@@ -232,24 +232,32 @@ export default function Sidebar({
                         {userLevel}
                       </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-[#2D1B69] group-hover:text-[#7D54FF]">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-[#2D1B69] truncate">
                         {user.fullName || user.username || "User"}
                       </div>
-                      {userEmail && <div className="text-xs text-[#7E7A93]">{userEmail}</div>}
+                      {userEmail && <div className="text-xs text-[#7E7A93] truncate">{userEmail}</div>}
                     </div>
                   </div>
                 </Link>
+                <div className="border-t border-[#efefef] my-2" />
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center gap-3 px-3 py-2.5 text-[#7E7A93] hover:bg-gray-100 rounded-lg transition-all duration-500 ease-in-out mb-1"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="text-sm">Settings</span>
+                </Link>
                 <button 
                   onClick={handleSignOut}
-                  className="flex items-center justify-center w-full p-3 text-[#FF7A59] border border-[#efefef] rounded-lg hover:bg-red-50 transition-all duration-500 ease-in-out"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 text-[#FF7A59] hover:bg-red-50 rounded-lg transition-all duration-500 ease-in-out"
                 >
-                  <LogOut className="w-5 h-5 mr-2" />
-                  Log out
+                  <LogOut className="w-5 h-5" />
+                  <span className="text-sm">Log out</span>
                 </button>
               </>
             ) : (
-              <div className="flex flex-col items-center gap-4 transition-all duration-500 ease-in-out">
+              <div className="flex flex-col items-center gap-3 transition-all duration-500 ease-in-out">
                 <Link
                   href="/dashboard/profile"
                   className="relative"
@@ -275,9 +283,17 @@ export default function Sidebar({
                     {userLevel}
                   </div>
                 </Link>
+                <div className="border-t border-[#efefef] w-8" />
+                <Link
+                  href="/dashboard/settings"
+                  className="flex items-center justify-center w-10 h-10 text-[#7E7A93] border border-[#efefef] rounded-lg hover:bg-gray-50 transition-all duration-500 ease-in-out"
+                  title="Settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </Link>
                 <button 
                   onClick={handleSignOut}
-                  className="flex items-center justify-center w-10 h-10 text-[#FF7A59] border border-[#efefef] rounded-lg hover:bg-gray-50 transition-all duration-500 ease-in-out"
+                  className="flex items-center justify-center w-10 h-10 text-[#FF7A59] border border-[#efefef] rounded-lg hover:bg-red-50 transition-all duration-500 ease-in-out"
                   title="Sign out"
                 >
                   <LogOut className="w-5 h-5" />
