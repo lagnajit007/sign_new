@@ -11,9 +11,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Cache-bust layer — increment BUILD_VERSION in railway.toml to force COPY re-run
-ARG BUILD_VERSION
-RUN echo "BUILD_VERSION=${BUILD_VERSION:-0} ($(date -u))"
+# Cache-bust layer — Railway-provided ARGs change every deploy, forcing COPY re-run
+ARG RAILWAY_GIT_COMMIT_SHA
+ARG RAILWAY_SNAPSHOT_ID
+ARG RAILWAY_DEPLOYMENT_ID
+RUN echo "Build: commit=$RAILWAY_GIT_COMMIT_SHA snapshot=$RAILWAY_SNAPSHOT_ID deploy=$RAILWAY_DEPLOYMENT_ID" > /build-stamp
 
 COPY . .
 

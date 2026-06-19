@@ -45,8 +45,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("sanjog.backend")
 
-# ── Build verification ──
-logger.info("SANJOG BACKEND VERSION 2026-06-19 BUILD TEST")
+# ── Build stamp (written by Dockerfile at build time) ──
+build_stamp = Path("/build-stamp")
+if build_stamp.exists():
+    logger.info("Build stamp: %s", build_stamp.read_text().strip())
+else:
+    logger.info("Build stamp not found — running outside Railway")
 app = Flask(__name__)
 
 # CORS: accept any origin that the frontend sends, echoing it back.
