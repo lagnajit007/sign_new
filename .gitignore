@@ -43,11 +43,9 @@ next-env.d.ts
 
 # Large data files
 *.pickle
-*.p
 *.pkl
 *.h5
 *.hdf5
-/backend/models/
 /model/
 
 # Python virtual environment

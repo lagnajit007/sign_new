@@ -159,7 +159,7 @@ export default function InteractiveLessonPage() {
     const check = async () => {
       const ok = await checkBackend();
       console.log(`[lesson] Backend health check: ${ok ? "OK" : "FAIL"} — URL: ${BACKEND_URL}`);
-      if (!ok) console.warn(`[lesson] Backend unreachable or model not loaded at ${BACKEND_URL}. Check that NEXT_PUBLIC_RECOGNITION_API_URL is set correctly on Vercel.`);
+      if (!ok) console.warn(`[lesson] Backend unreachable or model not loaded at ${BACKEND_URL}. Check that:\n  1. NEXT_PUBLIC_RECOGNITION_API_URL is set correctly on Vercel\n  2. The ML model file (model.p) is deployed on Railway\n  3. Railway service is running`);
       if (isMountedRef.current) setBackendConnected(ok);
     };
     check();

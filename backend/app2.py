@@ -103,6 +103,14 @@ try:
 except Exception as exc:
     logger.error("Failed to load model: %s", exc)
 
+# Warn loudly at startup if model is missing
+if model is None:
+    logger.error("*** MODEL NOT LOADED — all /predict requests will return 503 ***")
+    logger.error("*** Expected model at: %s ***", MODEL_PATH)
+    logger.error("*** Fix: ensure the model file is committed to git or uploaded to Railway ***")
+else:
+    logger.info("Model loaded successfully — %d classes available", len(labels_dict) or len(SIGN_LABELS))
+
 # ── Prediction cache & smoothing ──────────────────────────────────────────────
 PREDICTION_CACHE_SIZE = 256
 HISTORY_SIZE = 5
@@ -161,7 +169,9 @@ def _record_latency(elapsed_ms: float) -> None:
 # ── Routes ────────────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])
 def health_check():
-    return jsonify({"status": "ok", "model_loaded": model is not None}), 200
+    if model is not None:
+        return jsonify({"status": "healthy", "model_loaded": True}), 200
+    return jsonify({"status": "degraded", "model_loaded": False}), 503
 
 
 @app.route("/predict", methods=["POST"])
@@ -231,8 +241,9 @@ def get_stats():
     with _stats_lock:
         avg = sum(_request_times) / len(_request_times) if _request_times else 0
         count = len(_request_times)
+    status_str = "healthy" if model is not None else "degraded"
     return jsonify({
-        "status": "ok",
+        "status": status_str,
         "model_loaded": model is not None,
         "average_latency_ms": round(avg, 2),
         "request_count": count,
