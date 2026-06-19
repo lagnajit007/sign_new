@@ -45,7 +45,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("sanjog.backend")
 
-# ── Flask app ─────────────────────────────────────────────────────────────────
+# ── Build verification ──
+logger.info("SANJOG BACKEND VERSION 2026-06-19 BUILD TEST") ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 
 # CORS: accept any origin that the frontend sends, echoing it back.
