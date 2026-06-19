@@ -2,6 +2,11 @@
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
+[build.args]
+RAILWAY_GIT_COMMIT_SHA = "${{RAILWAY_GIT_COMMIT_SHA}}"
+RAILWAY_DEPLOYMENT_ID = "${{RAILWAY_DEPLOYMENT_ID}}"
+RAILWAY_SNAPSHOT_ID = "${{RAILWAY_SNAPSHOT_ID}}"
+
 [deploy]
 healthcheckPath = "/"
 healthcheckTimeout = 30
