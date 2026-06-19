@@ -2,6 +2,9 @@
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
+[build.args]
+BUILD_VERSION = "v2"
+
 [deploy]
 healthcheckPath = "/"
 healthcheckTimeout = 30
@@ -9,5 +12,5 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
 [deploy.env]
-FRONTEND_ORIGIN = "https://sanjog.vercel.app,http://localhost:3000"
+FRONTEND_ORIGIN = "https://signnew-production.up.railway.app,http://localhost:3000"
 RATELIMIT_PER_MINUTE = "60"

@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Cache-bust layer — increment BUILD_VERSION in railway.toml to force COPY re-run
+ARG BUILD_VERSION
+RUN echo "BUILD_VERSION=${BUILD_VERSION:-0} ($(date -u))"
+
 COPY . .
 
 EXPOSE 5000
