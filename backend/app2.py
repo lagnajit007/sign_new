@@ -24,6 +24,7 @@ import threading
 import time
 from collections import Counter, deque
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 from dotenv import load_dotenv
@@ -32,8 +33,9 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-# ── Environment ───────────────────────────────────────────────────────────────
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+# ── Environment ───────────────────────────────────────────────
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -77,10 +79,14 @@ limiter = Limiter(
 )
 
 # ── Model loading ─────────────────────────────────────────────────────────────
-DEFAULT_MODEL_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "models", "model.p"
-)
-MODEL_PATH = os.environ.get("MODEL_PATH", DEFAULT_MODEL_PATH)
+# Priority-ordered candidate paths — first one that exists wins.
+# This handles all deployment scenarios regardless of Docker build context.
+MODEL_CANDIDATES: list[Path] = [
+    Path(os.environ["MODEL_PATH"]) if "MODEL_PATH" in os.environ else None,
+    BASE_DIR / "models" / "model.p",
+    BASE_DIR.parent / "backend" / "models" / "model.p",
+    BASE_DIR / "model.p",
+]
 
 SIGN_LABELS: dict[int, str] = {
     **{i: chr(65 + i) for i in range(26)},          # A–Z → 0–25
@@ -91,25 +97,35 @@ model = None
 labels_dict: dict = {}
 _model_lock = threading.Lock()
 
-try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
-    t0 = time.time()
-    with open(MODEL_PATH, "rb") as f:
-        model_data = pickle.load(f)  # noqa: S301 — trusted local file
-    model = model_data["model"]
-    labels_dict = model_data.get("labels_dict", {})
-    logger.info("Model loaded in %.2fs from %s", time.time() - t0, MODEL_PATH)
-except Exception as exc:
-    logger.error("Failed to load model: %s", exc)
+MODEL_PATH: Path | None = None
+for candidate in filter(None, MODEL_CANDIDATES):
+    logger.info("Looking for model at: %s (exists=%s)", candidate, candidate.exists())
+    if candidate.exists():
+        MODEL_PATH = candidate
+        break
 
-# Warn loudly at startup if model is missing
-if model is None:
-    logger.error("*** MODEL NOT LOADED — all /predict requests will return 503 ***")
-    logger.error("*** Expected model at: %s ***", MODEL_PATH)
-    logger.error("*** Fix: ensure the model file is committed to git or uploaded to Railway ***")
+if MODEL_PATH is not None:
+    t0 = time.time()
+    try:
+        with open(MODEL_PATH, "rb") as f:
+            model_data = pickle.load(f)  # noqa: S301 — trusted local file
+        model = model_data["model"]
+        labels_dict = model_data.get("labels_dict", {})
+        logger.info(
+            "Model loaded in %.2fs from %s — %d classes",
+            time.time() - t0,
+            MODEL_PATH,
+            len(labels_dict) or len(SIGN_LABELS),
+        )
+    except Exception as exc:
+        logger.error("Failed to load model from %s: %s", MODEL_PATH, exc)
 else:
-    logger.info("Model loaded successfully — %d classes available", len(labels_dict) or len(SIGN_LABELS))
+    logger.error("*** MODEL NOT FOUND — checked %d candidates ***", len([c for c in MODEL_CANDIDATES if c]))
+    for i, c in enumerate(filter(None, MODEL_CANDIDATES)):
+        logger.error("  Candidate %d: %s (exists=%s)", i + 1, c, c.exists())
+
+if model is None:
+    logger.error("*** ALL /predict REQUESTS WILL RETURN 503 — model not loaded ***")
 
 # ── Prediction cache & smoothing ──────────────────────────────────────────────
 PREDICTION_CACHE_SIZE = 256
