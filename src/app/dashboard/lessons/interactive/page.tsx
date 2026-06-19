@@ -214,13 +214,10 @@ export default function InteractiveLessonPage() {
       streamRef.current = stream;
 
       if (!videoRef.current) {
-        const el = document.createElement("video");
-        el.autoplay = true;
-        el.playsInline = true;
-        el.muted = true;
-        el.width = 640;
-        el.height = 480;
-        videoRef.current = el;
+        setCameraState("error");
+        setCameraError("Video element not found. Please refresh the page.");
+        cleanupStream();
+        return;
       }
 
       const video = videoRef.current;

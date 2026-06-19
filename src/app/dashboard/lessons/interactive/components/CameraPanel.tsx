@@ -38,29 +38,27 @@ export default function CameraPanel({
 
   return (
     <div className="relative bg-black rounded-xl overflow-hidden flex-1" style={{ minHeight: '320px', aspectRatio: '4/3' }}>
-      {/* Active camera feed */}
-      {cameraState === 'active' && (
-        <div className="relative w-full h-full">
-          <video
-            ref={videoRef as React.Ref<HTMLVideoElement>}
-            autoPlay
-            playsInline
-            muted
-            width={640}
-            height={480}
-            className="w-full h-full object-contain"
-            style={{ display: 'block', backgroundColor: '#000' }}
-          />
-          <canvas
-            ref={canvasRef as React.Ref<HTMLCanvasElement>}
-            width={640}
-            height={480}
-            className="absolute inset-0 w-full h-full pointer-events-none"
-          />
-          {needsManualPlay && <ManualPlayButton onClick={onManualPlay} />}
-          {children}
-        </div>
-      )}
+      {/* Video element - always rendered in DOM for stable ref */}
+      <video
+        ref={videoRef as React.Ref<HTMLVideoElement>}
+        playsInline
+        muted
+        width={640}
+        height={480}
+        className={`w-full h-full object-contain ${cameraState === 'active' ? '' : 'hidden'}`}
+        style={{ backgroundColor: '#000' }}
+      />
+      {/* Canvas overlay - always rendered for stable ref */}
+      <canvas
+        ref={canvasRef as React.Ref<HTMLCanvasElement>}
+        width={640}
+        height={480}
+        className={`absolute inset-0 w-full h-full pointer-events-none ${cameraState === 'active' ? '' : 'hidden'}`}
+      />
+      {/* Manual play overlay */}
+      {cameraState === 'active' && needsManualPlay && <ManualPlayButton onClick={onManualPlay} />}
+      {/* Children overlay (prediction results, etc.) */}
+      {cameraState === 'active' && children}
 
       {/* Camera stopped state */}
       {cameraState === 'stopped' && (
