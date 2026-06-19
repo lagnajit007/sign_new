@@ -15,4 +15,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD gunicorn --workers 2 --bind 0.0.0.0:${PORT:-5000} --timeout 120 --log-level info app2:app
+CMD gunicorn --workers 2 --bind 0.0.0.0:${PORT:-5000} --timeout 120 --log-level info app:app
