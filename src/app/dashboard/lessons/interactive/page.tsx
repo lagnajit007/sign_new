@@ -22,9 +22,10 @@ import {
 } from "@/components/loaders/ProcessLoaders";
 
 import { HandTrackingAPIClient } from "@/utils/HandTrackingAPIClient";
+import { RECOGNITION_API_URL } from "@/lib/config";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const BACKEND_URL = process.env.NEXT_PUBLIC_RECOGNITION_API_URL || "http://127.0.0.1:5000";
+const BACKEND_URL = RECOGNITION_API_URL;
 const apiClient = new HandTrackingAPIClient(BACKEND_URL);
 
 const ALPHABET_LESSONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -37,6 +38,7 @@ const DETECTION_INTERVAL = 75;
 const BACKEND_ERROR_MESSAGE =
   "We're having trouble connecting to the recognition service. The service may be offline. Please try again later.";
 const BACKEND_ERROR_TITLE = "Recognition Service Offline";
+const BACKEND_MODEL_ERROR_MESSAGE = "The recognition model is not available on the server. Please contact support.";
 
 // ─── Utility functions ─────────────────────────────────────────────────────────
 const generateSVG = (text: string) => {
@@ -58,7 +60,9 @@ const preprocessLandmarks = (landmarks: number[][]): number[] => {
 const checkBackend = async (): Promise<boolean> => {
   try {
     const res = await fetch(BACKEND_URL, { method: "GET", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(3000) });
-    return res.ok;
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.model_loaded === true;
   } catch {
     return false;
   }
@@ -154,6 +158,8 @@ export default function InteractiveLessonPage() {
   useEffect(() => {
     const check = async () => {
       const ok = await checkBackend();
+      console.log(`[lesson] Backend health check: ${ok ? "OK" : "FAIL"} — URL: ${BACKEND_URL}`);
+      if (!ok) console.warn(`[lesson] Backend unreachable or model not loaded at ${BACKEND_URL}. Check that NEXT_PUBLIC_RECOGNITION_API_URL is set correctly on Vercel.`);
       if (isMountedRef.current) setBackendConnected(ok);
     };
     check();

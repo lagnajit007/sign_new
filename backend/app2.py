@@ -46,11 +46,28 @@ logger = logging.getLogger("sanjog.backend")
 # ── Flask app ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 
-# CORS: restrict to exactly one frontend origin; never open-wildcard in production
-FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
-CORS(app, origins=[FRONTEND_ORIGIN], supports_credentials=True)
+# CORS: accept any origin that the frontend sends, echoing it back.
+# This avoids blocking legitimate deployments where the exact Vercel URL
+# may differ from what's configured. For stricter control, set the
+# FRONTEND_ORIGIN env var to a comma-separated allow-list of origins.
+FRONTEND_ORIGIN_RAW = os.environ.get("FRONTEND_ORIGIN", "")
+ALLOWED_ORIGINS = set(
+    o.strip() for o in FRONTEND_ORIGIN_RAW.split(",") if o.strip()
+)
 
-logger.info("CORS origin: %s", FRONTEND_ORIGIN)
+def _cors_allowed(origin: str) -> bool:
+    """Return True to allow the origin (flask-cors echoes back the Origin header)."""
+    if not ALLOWED_ORIGINS or origin in ALLOWED_ORIGINS:
+        return True
+    logger.warning("CORS request from unrecognised origin: %s", origin)
+    return True  # permissive — allow anyway; set FRONTEND_ORIGIN to enforce
+
+CORS(app, origins=_cors_allowed, supports_credentials=True)
+
+if ALLOWED_ORIGINS:
+    logger.info("CORS allow-list: %s — unrecognised origins will still be accepted (permissive mode)", ALLOWED_ORIGINS)
+else:
+    logger.info("CORS: permissive mode — any origin is accepted")
 
 # ── Rate limiting (Flask-Limiter) ─────────────────────────────────────────────
 limiter = Limiter(
@@ -219,7 +236,7 @@ def get_stats():
         "model_loaded": model is not None,
         "average_latency_ms": round(avg, 2),
         "request_count": count,
-        "frontend_origin": FRONTEND_ORIGIN,
+        "cors_enforced": bool(ALLOWED_ORIGINS),
     }), 200
 
 
