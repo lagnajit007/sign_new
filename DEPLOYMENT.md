@@ -35,6 +35,14 @@ The seed creates the achievement and challenge catalogs, plus 8 **demo learners*
 1. Create an application and copy the publishable and secret keys.
 2. Under **Webhooks → Add endpoint**, set the URL to `https://<your-app>.vercel.app/api/webhooks/clerk` and subscribe to `user.created`, `user.updated` and `user.deleted`. Copy the signing secret.
 3. Before real launch, switch to a **production** Clerk instance. Production keys start with `pk_live_` / `sk_live_` and need your own domain.
+4. **Sign-in methods** (Configure → User & authentication). The app's own sign-in and sign-up pages support exactly these, so the instance must match:
+   - **Email:** on, required, verified with an email code; sign-in with email.
+   - **Password:** on.
+   - **Phone number** and **Username:** off. If either is required, sign-up gets stuck asking for it.
+   - **SSO connections:** Google and LinkedIn (OIDC) on for sign-up and sign-in; nothing else.
+5. **Google and LinkedIn in production.** The development instance uses Clerk's shared OAuth credentials. A production instance needs your own:
+   - Google: create an OAuth client (Web application) in Google Cloud Console and paste the client ID and secret into Clerk's Google connection. Add the redirect URI Clerk shows there.
+   - LinkedIn: create an app at linkedin.com/developers, add the "Sign In with LinkedIn using OpenID Connect" product, and paste its client ID and secret into Clerk's LinkedIn connection, with the redirect URI Clerk shows.
 
 ## 3. Vercel
 

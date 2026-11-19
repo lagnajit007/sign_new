@@ -1,12 +1,23 @@
-import { SignIn } from "@clerk/nextjs";
-import { AuthLayout, clerkAppearance } from "@/components/auth/auth-layout";
+import Link from "next/link";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { SignInForm } from "@/components/auth/SignInForm";
 
 export const metadata = { title: "Sign in · Sanjog" };
 
 export default function SignInPage() {
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to pick up where you left off.">
-      <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" fallbackRedirectUrl="/dashboard" appearance={clerkAppearance} />
-    </AuthLayout>
+    <AuthShell
+      title="Sign in to Sanjog"
+      aside={
+        <>
+          New here?{" "}
+          <Link href="/sign-up" className="rounded font-medium text-brand underline-offset-2 hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
+    >
+      <SignInForm />
+    </AuthShell>
   );
 }
