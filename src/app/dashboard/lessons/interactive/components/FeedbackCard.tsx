@@ -1,228 +1,179 @@
-'use client';
+"use client";
 
-import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, AlertCircle, Hand, ArrowRight, RotateCcw } from 'lucide-react';
-import Button from '@/components/Button';
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Check, Hand, Loader2, RotateCcw, ScanLine, TriangleAlert } from "lucide-react";
+import type { Phase } from "../practice-machine";
 
-export type RecognitionState =
-  | 'idle'
-  | 'countdown'
-  | 'waiting'
-  | 'detected'
-  | 'holding'
-  | 'success'
-  | 'incorrect'
-  | 'error';
-
-interface FeedbackCardProps {
-  state: RecognitionState;
-  targetSign: string;
-  detectedSign?: string | null;
-  confidence?: number;
-  holdProgress: number; // 0 to 100
-  nextSignLabel?: string;
-  xpEarned?: number;
-  onContinue?: () => void;
-  onRetry?: () => void;
+/** Small ring for the current hold: deliberately unlike the lesson progress bar. */
+function HoldRing({ value }: { value: number }) {
+  const r = 9;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 24 24" className="size-9 -rotate-90 shrink-0" aria-hidden>
+      <circle cx="12" cy="12" r={r} fill="none" stroke="rgb(255 255 255 / 0.12)" strokeWidth="2.5" />
+      <circle
+        cx="12"
+        cy="12"
+        r={r}
+        fill="none"
+        stroke="#6ee7b7"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - value)}
+        className="transition-[stroke-dashoffset] duration-200 ease-linear"
+      />
+    </svg>
+  );
 }
 
+function Row({ icon, title, body, children }: { icon: React.ReactNode; title: string; body?: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      {icon}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-white">{title}</p>
+        {body && <p className="mt-0.5 truncate text-xs text-zinc-400">{body}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const iconBox = "grid size-9 shrink-0 place-items-center rounded-full";
+const primaryBtn =
+  "inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--sj-brand-hover)] px-3.5 text-sm font-medium text-white transition-colors hover:bg-[#7c5cff] disabled:opacity-60";
+const ghostBtn = "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-white";
+
 export default function FeedbackCard({
-  state,
-  targetSign,
-  detectedSign,
-  confidence,
-  holdProgress,
-  nextSignLabel,
-  xpEarned,
+  phase,
+  cameraOn,
+  target,
+  nextSign,
+  tip,
   onContinue,
   onRetry,
-}: FeedbackCardProps) {
+  onRetrySave,
+}: {
+  phase: Phase;
+  cameraOn: boolean;
+  target: string;
+  nextSign: string | null;
+  tip: string;
+  onContinue: () => void;
+  onRetry: () => void;
+  onRetrySave: () => void;
+}) {
+  const reduce = useReducedMotion();
+
+  let key = "idle";
+  let content: React.ReactNode;
+
+  if (!cameraOn && phase.kind !== "success" && phase.kind !== "paused") {
+    key = "idle";
+    content = <Row icon={<span className={`${iconBox} bg-white/5 text-zinc-400`}><Hand className="size-4" /></span>} title="Start your camera to practise" body={`You'll make the sign for ${target}.`} />;
+  } else if (phase.kind === "countdown") {
+    key = "countdown";
+    content = <Row icon={<span className={`${iconBox} bg-white/5 text-zinc-300`}><Hand className="size-4" /></span>} title={`Get ready to sign ${target}`} body={tip} />;
+  } else if (phase.kind === "paused") {
+    key = "paused";
+    content = (
+      <Row
+        icon={<span className={`${iconBox} bg-amber-400/15 text-amber-300`}><TriangleAlert className="size-4" /></span>}
+        title="Practice paused"
+        body={phase.reason === "tab-hidden" ? "Return to this tab to continue." : "Reconnect your camera and press Start camera."}
+      />
+    );
+  } else if (phase.kind === "recognizing") {
+    key = `rec-${phase.sub}`;
+    if (phase.sub === "waiting") {
+      content = <Row icon={<span className={`${iconBox} bg-white/5 text-zinc-300`}><ScanLine className="size-4" /></span>} title="Show your hand" body="Hold it inside the guide, palm facing the camera." />;
+    } else if (phase.sub === "detected") {
+      content = <Row icon={<span className={`${iconBox} bg-[var(--sj-brand-hover)]/20 text-violet-200`}><Hand className="size-4" /></span>} title="Hand detected" body={`Now form the ${target} sign.`} />;
+    } else if (phase.sub === "incorrect") {
+      content = (
+        <Row
+          icon={<span className={`${iconBox} bg-amber-400/15 text-amber-300`}><Hand className="size-4" /></span>}
+          title={phase.detected ? `That looks like ${phase.detected}` : "Not quite yet"}
+          body={tip}
+        />
+      );
+    } else {
+      content = (
+        <Row icon={<HoldRing value={phase.holdProgress} />} title={`Hold your ${target} steady`} body="Almost there. Keep your hand still." />
+      );
+    }
+  } else if (phase.kind === "success") {
+    key = `success-${phase.save}`;
+    const icon = (
+      <motion.span
+        initial={reduce ? false : { scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        className={`${iconBox} bg-emerald-400/20 text-emerald-300`}
+      >
+        <Check className="size-5" />
+      </motion.span>
+    );
+    if (phase.save === "saving") {
+      content = (
+        <Row icon={icon} title={`Great job, that's ${target}!`} body="Saving your progress…">
+          <button type="button" disabled className={primaryBtn}>
+            <Loader2 className="size-4 animate-spin" aria-hidden /> Saving
+          </button>
+        </Row>
+      );
+    } else if (phase.save === "failed") {
+      content = (
+        <Row icon={icon} title={`Great job, that's ${target}!`} body="We couldn't save this one.">
+          <button type="button" onClick={onRetrySave} className={primaryBtn}>
+            Try again
+          </button>
+          <button type="button" onClick={onContinue} className={ghostBtn}>
+            Skip
+          </button>
+        </Row>
+      );
+    } else {
+      content = (
+        <Row
+          icon={icon}
+          title={`Great job, that's ${target}!`}
+          body={phase.xp > 0 ? `+${phase.xp} XP` : "Practice saved."}
+        >
+          <button type="button" onClick={onContinue} className={primaryBtn} autoFocus>
+            {nextSign ? <>Continue to {nextSign}</> : "Finish"}
+            <ArrowRight className="size-4" aria-hidden />
+          </button>
+        </Row>
+      );
+    }
+  } else {
+    content = <Row icon={<span className={`${iconBox} bg-white/5 text-zinc-300`}><Hand className="size-4" /></span>} title="Ready when you are" />;
+  }
+
+  const canRetry = cameraOn && (phase.kind === "recognizing" || (phase.kind === "success" && phase.save !== "saving"));
+
   return (
-    <div className="rounded-xl border border-white/10 bg-zinc-900/90 backdrop-blur-sm p-3.5 select-none transition-all duration-200">
-      <AnimatePresence mode="wait">
-        {/* ─── State: SUCCESS ─── */}
-        {state === 'success' && (
-          <motion.div
-            key="success"
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.2 }}
-            className="flex items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="size-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-green-400">Great Job! ✓</h4>
-                  {xpEarned && xpEarned > 0 ? (
-                    <span className="text-[11px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full">
-                      +{xpEarned} XP
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-xs text-zinc-300 mt-0.5">
-                  Sign for <span className="font-bold text-white">"{targetSign}"</span> completed successfully!
-                </p>
-              </div>
-            </div>
-
-            {onContinue && (
-              <Button
-                variant="primary"
-                size="sm"
-                icon={ArrowRight}
-                iconPosition="right"
-                onClick={onContinue}
-                className="bg-green-600 hover:bg-green-500 text-white shrink-0 shadow-md shadow-green-900/40"
-              >
-                {nextSignLabel ? `Continue to ${nextSignLabel}` : 'Complete Lesson'}
-                <span className="opacity-70 text-[10px] ml-1 hidden sm:inline">(Space)</span>
-              </Button>
-            )}
-          </motion.div>
-        )}
-
-        {/* ─── State: HOLDING STABILITY ─── */}
-        {state === 'holding' && (
-          <motion.div
-            key="holding"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="space-y-2"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs font-bold text-white">
-                  Hold your "{targetSign}" sign steady
-                </span>
-                {confidence !== undefined && (
-                  <span className="text-[10px] text-zinc-400 bg-white/5 px-2 py-0.5 rounded-full font-mono">
-                    {Math.round(confidence * 100)}% confidence
-                  </span>
-                )}
-              </div>
-              <span className="text-xs font-mono font-bold text-green-400 tabular-nums">
-                {Math.round(holdProgress)}%
-              </span>
-            </div>
-
-            {/* Stability meter bar */}
-            <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-brand to-green-400 rounded-full"
-                animate={{ width: `${Math.min(Math.max(holdProgress, 0), 100)}%` }}
-                transition={{ duration: 0.1, ease: 'linear' }}
-              />
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── State: DETECTED BUT WRONG SIGN ─── */}
-        {state === 'incorrect' && (
-          <motion.div
-            key="incorrect"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="flex items-center justify-between gap-2"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="size-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                <AlertCircle className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-zinc-200">
-                  Detected <span className="font-bold text-amber-400">"{detectedSign}"</span> instead of "{targetSign}"
-                </p>
-                <p className="text-[11px] text-zinc-400 truncate">
-                  Check your finger positioning against the reference illustration.
-                </p>
-              </div>
-            </div>
-
-            {onRetry && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={RotateCcw}
-                onClick={onRetry}
-                className="!text-zinc-400 hover:!text-white text-xs shrink-0"
-              >
-                Reset
-              </Button>
-            )}
-          </motion.div>
-        )}
-
-        {/* ─── State: HAND DETECTED WAITING FOR FORM ─── */}
-        {state === 'detected' && (
-          <motion.div
-            key="detected"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="flex items-center gap-2.5"
-          >
-            <div className="size-8 rounded-full bg-brand/20 text-brand flex items-center justify-center shrink-0">
-              <Hand className="size-4" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-200">
-                Hand detected — form sign <span className="text-brand font-bold">"{targetSign}"</span>
-              </p>
-              <p className="text-[11px] text-zinc-400">
-                Align your hand inside the frame and hold the sign steady.
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── State: WAITING (NO HAND) ─── */}
-        {state === 'waiting' && (
-          <motion.div
-            key="waiting"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex items-center gap-2.5"
-          >
-            <div className="size-8 rounded-full bg-zinc-800 text-zinc-400 flex items-center justify-center shrink-0">
-              <Hand className="size-4" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-300">Show your hand</p>
-              <p className="text-[11px] text-zinc-500">
-                Raise your hand inside the camera guide box to begin.
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ─── State: COUNTDOWN OR IDLE ─── */}
-        {(state === 'idle' || state === 'countdown') && (
-          <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-brand animate-pulse" />
-            <span className="text-xs text-zinc-400">
-              {state === 'countdown' ? 'Preparing recognition...' : 'Camera ready. Start when prepared.'}
-            </span>
-          </motion.div>
-        )}
-
-        {/* ─── State: ERROR ─── */}
-        {state === 'error' && (
-          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
-            <AlertCircle className="size-4 text-red-400" />
-            <span className="text-xs text-red-300">
-              Recognition pipeline error. Please adjust hand distance and lighting.
-            </span>
-          </motion.div>
-        )}
+    <div className="rounded-xl border border-white/10 bg-zinc-900 p-3" aria-live="polite">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={key}
+          initial={reduce ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduce ? undefined : { opacity: 0, y: -4 }}
+          transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {content}
+        </motion.div>
       </AnimatePresence>
+      {canRetry && (
+        <div className="mt-2.5 flex justify-end border-t border-white/5 pt-2">
+          <button type="button" onClick={onRetry} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 hover:text-white">
+            <RotateCcw className="size-3.5" aria-hidden /> Reset sign
+          </button>
+        </div>
+      )}
     </div>
   );
 }

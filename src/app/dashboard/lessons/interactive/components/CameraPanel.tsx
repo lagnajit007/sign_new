@@ -91,12 +91,12 @@ export default function CameraPanel({
           <div className="size-14 rounded-full bg-zinc-800 flex items-center justify-center mb-3">
             <CameraOff className="size-6 text-zinc-400" />
           </div>
-          <p className="text-base font-semibold mb-1">Camera Paused</p>
+          <p className="text-base font-semibold mb-1">{cameraError ? 'Camera disconnected' : 'Camera stopped'}</p>
           <p className="text-xs text-zinc-400 mb-5 text-center max-w-xs">
-            Recognition is paused. Resume when you're ready to practice.
+            {cameraError ?? "Start it again when you're ready to keep practising."}
           </p>
           <Button variant="primary" size="sm" icon={Camera} onClick={onStart}>
-            Resume Camera
+            Start camera
           </Button>
         </div>
       )}

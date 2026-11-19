@@ -1,134 +1,77 @@
-'use client';
+"use client";
 
-import { useRef, useEffect } from 'react';
-import { motion } from "motion/react";
-import { Trophy, Clock, Target, Zap, Award, ArrowRight } from 'lucide-react';
-import Button from '@/components/Button';
-import KpiCard from '@/components/KpiCard';
-import { celebrate } from '@/lib/celebrate';
+import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { motion, useReducedMotion } from "motion/react";
+import { Trophy } from "lucide-react";
+import { celebrate } from "@/lib/celebrate";
 
-interface CompletionScreenProps {
-  accuracy: number;
-  xpEarned: number;
-  totalXp: number;
-  timeTaken: number;
-  signsMastered: number;
-  totalSigns: number;
-  achievementsUnlocked: number;
-  onContinue: () => void;
-}
-
+/** End-of-set summary with real numbers (no frame-based "accuracy"). */
 export default function CompletionScreen({
-  accuracy,
-  xpEarned,
-  totalXp,
-  timeTaken,
-  signsMastered,
-  totalSigns,
-  achievementsUnlocked,
-  onContinue,
-}: CompletionScreenProps) {
-  const minutes = Math.floor(timeTaken / 60);
-  const seconds = timeTaken % 60;
-  const grade = accuracy >= 90 ? 'S' : accuracy >= 80 ? 'A' : accuracy >= 70 ? 'B' : accuracy >= 60 ? 'C' : 'D';
-  const gradeColor =
-    grade === 'S' ? 'text-yellow-400' :
-    grade === 'A' ? 'text-green-400' :
-    grade === 'B' ? 'text-blue-400' :
-    grade === 'C' ? 'text-orange-400' : 'text-red-400';
-
+  lessonLabel,
+  masteredThisSession,
+  firstTry,
+  xp,
+  seconds,
+  onRestart,
+}: {
+  lessonLabel: string;
+  masteredThisSession: number;
+  firstTry: number;
+  xp: number;
+  seconds: number;
+  onRestart: () => void;
+}) {
+  const reduce = useReducedMotion();
   const trophyRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    if (achievementsUnlocked > 0 && trophyRef.current) {
-      celebrate(trophyRef.current)
-    }
-  }, [achievementsUnlocked])
+    if (masteredThisSession > 0) celebrate(trophyRef.current);
+  }, [masteredThisSession]);
+
+  const stats = [
+    { label: "Signs mastered", value: masteredThisSession },
+    { label: "First try", value: firstTry },
+    { label: "XP earned", value: `+${xp}` },
+    { label: "Time", value: `${Math.floor(seconds / 60)}m ${seconds % 60}s` },
+  ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-    >
+    <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="complete-title">
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-        className="bg-panel rounded-3xl max-w-lg w-full mx-auto shadow-2xl overflow-hidden"
+        initial={reduce ? false : { opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-[0_30px_80px_-30px_rgb(0_0_0/0.5)]"
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-brand to-brand-hover p-6 text-center text-white">
-          <motion.div
-            ref={trophyRef}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-            className="w-20 h-20 rounded-full bg-white/20 mx-auto mb-3 flex items-center justify-center"
-          >
-            <Trophy className="w-10 h-10" />
-          </motion.div>
-          <h2 className="text-2xl font-bold">Lesson Complete!</h2>
-          <p className="text-white/80 text-sm mt-1">Great work on this lesson</p>
+        <div ref={trophyRef} className="mx-auto grid size-14 place-items-center rounded-full bg-brand-tint text-brand">
+          <Trophy className="size-6" aria-hidden />
         </div>
-
-        {/* Grade */}
-        <div className="flex justify-center -mt-10">
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.4, type: 'spring', damping: 12 }}
-            className={`w-20 h-20 rounded-full bg-gray-900 border-4 border-white flex items-center justify-center ${gradeColor} text-3xl font-black shadow-lg`}
-          >
-            {grade}
-          </motion.div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 p-6">
-          <KpiCard icon={Target} label="Accuracy" value={`${accuracy}%`} color="green" />
-          <KpiCard icon={Zap} label="XP Earned" value={`+${xpEarned}`} color="purple" />
-          <KpiCard icon={Clock} label="Time Taken" value={`${minutes}m ${seconds}s`} color="blue" />
-          <KpiCard icon={Award} label="Signs Mastered" value={`${signsMastered}/${totalSigns}`} color="orange" />
-        </div>
-
-        {/* Achievements */}
-        {achievementsUnlocked > 0 && (
-          <div className="px-6 pb-2">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
-              <span className="text-sm font-medium text-yellow-700">
-                🏆 {achievementsUnlocked} achievement{achievementsUnlocked > 1 ? 's' : ''} unlocked!
-              </span>
+        <h2 id="complete-title" className="mt-4 text-center font-display text-xl font-semibold tracking-tight text-fg">
+          {lessonLabel} complete
+        </h2>
+        <p className="mt-1 text-center text-sm text-fg-muted">Nice work. Here&apos;s this session.</p>
+        <dl className="mt-6 grid grid-cols-2 gap-3">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-xl border border-line bg-canvas p-3">
+              <dt className="text-xs text-fg-subtle">{s.label}</dt>
+              <dd className="mt-1 font-display text-xl font-semibold tabular-nums text-fg">{s.value}</dd>
             </div>
-          </div>
-        )}
-
-        {/* XP Bar */}
-        <div className="px-6 pb-4">
-          <div className="flex justify-between text-xs text-fg-subtle mb-1">
-            <span>Total XP</span>
-            <span>{totalXp} XP</span>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className="p-6 pt-2 space-y-3">
-          <Button
-            variant="primary"
-            className="w-full !rounded-xl !shadow-none bg-gradient-to-r from-brand to-brand-hover"
-            onClick={onContinue}
-            icon={ArrowRight}
-            iconPosition="right"
+          ))}
+        </dl>
+        <div className="mt-6 grid gap-2">
+          <button
+            type="button"
+            onClick={onRestart}
+            autoFocus
+            className="h-10 rounded-lg bg-brand text-sm font-medium text-brand-fg transition-colors hover:bg-brand-hover"
           >
-            Continue Learning
-          </Button>
-          <Button variant="ghost" className="w-full justify-center" href="/dashboard/lessons">
-            Back to Lessons
-          </Button>
+            Practise this set again
+          </button>
+          <Link href="/dashboard/lessons" className="grid h-10 place-items-center rounded-lg border border-line text-sm font-medium text-fg hover:bg-subtle">
+            Back to lessons
+          </Link>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
-
-

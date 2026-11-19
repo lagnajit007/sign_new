@@ -1,146 +1,125 @@
-'use client';
+"use client";
 
-import { motion } from 'motion/react';
-import { Lightbulb, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
-import Button from '@/components/Button';
-import { getSignTip } from '../signTips';
+import { motion, useReducedMotion } from "motion/react";
+import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface LessonPanelProps {
-  targetSign: string;
-  lessonType: 'alphabet' | 'number';
-  currentIndex: number;
-  totalLessons: number;
-  completedCount: number;
-  imageUrl: string;
-  hasHandImage?: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}
-
+/**
+ * Learning panel: identity → reference → one tip → compact lesson progress.
+ * Lesson progress shows real mastery (from the database), one dot per sign.
+ */
 export default function LessonPanel({
-  targetSign,
+  target,
   lessonType,
-  currentIndex,
-  totalLessons,
-  completedCount,
+  index,
+  lessons,
+  mastered,
   imageUrl,
-  hasHandImage = false,
+  hasHandImage,
+  tip,
   onPrevious,
   onNext,
-}: LessonPanelProps) {
-  const label = lessonType === 'alphabet' ? 'Letter' : 'Number';
-  const tip = getSignTip(targetSign);
+  onJump,
+}: {
+  target: string;
+  lessonType: "alphabet" | "number";
+  index: number;
+  lessons: string[];
+  mastered: Set<string>;
+  imageUrl: string;
+  hasHandImage: boolean;
+  tip: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  onJump: (index: number) => void;
+}) {
+  const reduce = useReducedMotion();
+  const done = lessons.filter((s) => mastered.has(s)).length;
+  const kind = lessonType === "alphabet" ? "Letter" : "Number";
 
   return (
-    <div className="h-full flex flex-col justify-between p-4 lg:p-6 overflow-hidden select-none">
-      {/* ─── Zone 1: Lesson Identity ─── */}
-      <div className="shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-tint px-2.5 py-0.5 text-xs font-semibold text-brand tracking-wide uppercase">
-              <BookOpen className="size-3" />
-              {lessonType === 'alphabet' ? 'Alphabet' : 'Number'}
-            </span>
-            <span className="text-xs text-fg-muted font-medium">
-              {label} {currentIndex + 1} of {totalLessons}
-            </span>
-          </div>
-
-          {/* Quick prev / next */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="icon"
-              size="sm"
-              icon={ChevronLeft}
-              onClick={onPrevious}
-              disabled={currentIndex === 0}
-              aria-label="Previous sign"
-            />
-            <Button
-              variant="icon"
-              size="sm"
-              icon={ChevronRight}
-              onClick={onNext}
-              disabled={currentIndex === totalLessons - 1}
-              aria-label="Next sign"
-            />
-          </div>
+    <div className="flex h-full min-h-0 flex-col p-4 lg:p-5">
+      {/* 1. Identity */}
+      <div className="flex shrink-0 items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-fg-subtle">
+            {lessonType === "alphabet" ? "Alphabet" : "Numbers"} · {kind} {index + 1} of {lessons.length}
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-fg">
+            Learn <span className="text-brand">{target}</span>
+          </h1>
         </div>
-
-        <h1 className="mt-2 font-display text-2xl lg:text-3xl font-bold tracking-tight text-fg">
-          Sign for <span className="text-brand">"{targetSign}"</span>
-        </h1>
-      </div>
-
-      {/* ─── Zone 2: Reference Hand Gesture (Prominent & Responsive) ─── */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center my-3 relative">
-        <div className="relative w-full h-full max-h-[260px] rounded-2xl border border-line bg-canvas p-3 flex flex-col items-center justify-center overflow-hidden shadow-sm">
-          {/* Target letter watermark / badge */}
-          <span className="absolute left-3 top-3 grid size-8 place-items-center rounded-lg bg-brand-tint font-display text-base font-bold text-brand shadow-sm">
-            {targetSign}
-          </span>
-
-          <motion.img
-            key={targetSign}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            src={imageUrl}
-            alt={
-              hasHandImage
-                ? `ASL hand shape for letter ${targetSign}`
-                : `Reference for sign ${targetSign}`
-            }
-            className={`w-full h-full object-contain max-h-[210px] ${
-              hasHandImage ? 'dark:invert' : ''
-            }`}
-          />
-
-          <span className="text-[11px] text-fg-subtle mt-1 font-medium">
-            {hasHandImage ? 'ASL fingerspelling reference' : 'Standard sign representation'}
-          </span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onPrevious}
+            disabled={index === 0}
+            aria-label="Previous sign"
+            className="grid size-8 place-items-center rounded-lg border border-line text-fg-muted transition-colors hover:bg-subtle hover:text-fg disabled:opacity-40"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={index === lessons.length - 1}
+            aria-label="Next sign"
+            className="grid size-8 place-items-center rounded-lg border border-line text-fg-muted transition-colors hover:bg-subtle hover:text-fg disabled:opacity-40"
+          >
+            <ChevronRight className="size-4" />
+          </button>
         </div>
       </div>
 
-      {/* ─── Zone 3: Contextual Guidance (Single Focused Quick Tip) ─── */}
-      <div className="shrink-0 mb-3">
-        <div className="rounded-xl border border-line bg-subtle p-3 flex items-start gap-2.5">
-          <div className="mt-0.5 rounded-md bg-brand-tint p-1 text-brand shrink-0">
-            <Lightbulb className="size-3.5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-fg tracking-tight">Form Guidance</p>
-            <p className="mt-0.5 text-xs text-fg-muted leading-relaxed line-clamp-2">
-              {tip}
-            </p>
-          </div>
-        </div>
+      {/* 2. Reference: takes all remaining height, shrinks first on short screens */}
+      <figure className="relative my-3 flex min-h-0 flex-1 flex-col items-center justify-center rounded-xl border border-line bg-canvas p-3">
+        <motion.img
+          key={target}
+          initial={reduce ? false : { opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          src={imageUrl}
+          alt={hasHandImage ? `ASL hand shape for the letter ${target}` : `The ${kind.toLowerCase()} ${target}`}
+          className={cn("min-h-0 w-full max-w-[280px] flex-1 object-contain", hasHandImage && "dark:invert")}
+        />
+        <figcaption className="mt-2 shrink-0 text-[11px] text-fg-subtle">
+          {hasHandImage ? "Reference hand shape (ASL)" : "Hand-shape drawing coming soon"}
+        </figcaption>
+      </figure>
+
+      {/* 3. One contextual tip */}
+      <div className="flex shrink-0 items-start gap-2.5 rounded-xl bg-subtle p-3">
+        <Lightbulb className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+        <p className="text-sm leading-snug text-fg-muted">{tip}</p>
       </div>
 
-      {/* ─── Zone 4: Lesson Progress & Completion Summary ─── */}
-      <div className="shrink-0 pt-3 border-t border-line flex items-center justify-between text-xs text-fg-muted">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-fg">Lesson Progress:</span>
-          <span className="tabular-nums font-bold text-brand bg-brand-tint px-2 py-0.5 rounded-full">
-            {completedCount} / {totalLessons} mastered
+      {/* 4. Lesson progress: compact, one dot per sign (click to jump) */}
+      <div className="mt-3 shrink-0 border-t border-line pt-3">
+        <div className="mb-2 flex items-center justify-between text-xs">
+          <span className="text-fg-muted">Lesson progress</span>
+          <span className="tabular-nums text-fg">
+            {done} of {lessons.length} mastered
           </span>
         </div>
-
-        {/* Micro milestone dots */}
-        <div className="flex items-center gap-1" aria-hidden>
-          {Array.from({ length: 6 }).map((_, i) => {
-            const milestone = Math.floor(((i + 1) / 6) * totalLessons);
-            const isReached = completedCount >= milestone;
-            return (
-              <span
-                key={i}
-                className={`size-1.5 rounded-full transition-colors ${
-                  isReached ? 'bg-brand' : 'bg-line-strong'
-                }`}
-              />
-            );
-          })}
-        </div>
+        <ol className="flex flex-wrap gap-1" aria-label="Signs in this lesson">
+          {lessons.map((s, i) => (
+            <li key={s}>
+              <button
+                type="button"
+                onClick={() => onJump(i)}
+                aria-label={`${kind} ${s}${mastered.has(s) ? ", mastered" : ""}${i === index ? ", current" : ""}`}
+                aria-current={i === index ? "step" : undefined}
+                className={cn(
+                  "grid size-5 place-items-center rounded text-[9px] font-semibold transition-colors",
+                  mastered.has(s) ? "bg-brand text-brand-fg" : "bg-subtle text-fg-subtle hover:bg-subtle-hover",
+                  i === index && "ring-2 ring-brand ring-offset-1 ring-offset-panel",
+                )}
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );

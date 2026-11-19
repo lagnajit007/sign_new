@@ -1,111 +1,109 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { FastForward } from 'lucide-react';
-import Button from '@/components/Button';
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { FastForward, Pause } from "lucide-react";
+import { stepDuration, type CountdownStep, type PauseReason } from "../practice-machine";
 
-export type CountdownStep = 3 | 2 | 1 | 'GO' | 'DONE';
+const R = 54;
+const CIRC = 2 * Math.PI * R;
 
-interface CountdownOverlayProps {
-  targetSign: string;
-  onComplete: () => void;
-  onSkip: () => void;
-}
-
+/**
+ * Presentational 3-2-1-GO overlay. Timing lives in use-practice-session (one
+ * timer); this only draws the current step. The ring depletes over each step.
+ */
 export default function CountdownOverlay({
+  step,
+  paused,
   targetSign,
-  onComplete,
+  imageUrl,
+  hasHandImage,
   onSkip,
-}: CountdownOverlayProps) {
-  const [step, setStep] = useState<CountdownStep>(3);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-
-    if (step === 3) {
-      timer = setTimeout(() => setStep(2), 1000);
-    } else if (step === 2) {
-      timer = setTimeout(() => setStep(1), 1000);
-    } else if (step === 1) {
-      timer = setTimeout(() => setStep('GO'), 1000);
-    } else if (step === 'GO') {
-      timer = setTimeout(() => {
-        setStep('DONE');
-        onComplete();
-      }, 500);
-    }
-
-    return () => clearTimeout(timer);
-  }, [step, onComplete]);
-
-  // Support Spacebar or Enter to skip countdown
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' || e.key === 'Enter') {
-        e.preventDefault();
-        onSkip();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSkip]);
-
-  if (step === 'DONE') return null;
+}: {
+  step: CountdownStep;
+  paused: PauseReason | null;
+  targetSign: string;
+  imageUrl: string;
+  hasHandImage: boolean;
+  onSkip: () => void;
+}) {
+  const reduce = useReducedMotion();
+  const ms = stepDuration(step);
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[2px] transition-all duration-300">
-      {/* Target letter reminder header */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between text-white/90">
-        <div className="flex items-center gap-2 bg-black/60 rounded-full px-3.5 py-1.5 border border-white/10 backdrop-blur-md">
-          <span className="text-xs text-white/60 font-medium">Get ready for</span>
-          <span className="text-sm font-bold text-brand bg-white px-2 py-0.5 rounded-full">{targetSign}</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={FastForward}
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/60" role="timer" aria-live="assertive">
+      {/* Target reminder: what to make, visible during preparation */}
+      <div className="absolute left-3 top-3 flex items-center gap-2.5 rounded-xl border border-white/10 bg-zinc-950/80 p-1.5 pr-3">
+        <span className="grid size-11 place-items-center overflow-hidden rounded-lg bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt="" className={hasHandImage ? "size-10 object-contain" : "size-9 object-contain"} />
+        </span>
+        <span className="text-xs text-white/60">
+          Get ready for <span className="block text-sm font-semibold text-white">{targetSign}</span>
+        </span>
+      </div>
+
+      {!paused && (
+        <button
+          type="button"
           onClick={onSkip}
-          className="!text-white/80 hover:!text-white !bg-white/10 hover:!bg-white/20 !border-0 text-xs backdrop-blur-md"
+          className="absolute right-3 top-3 inline-flex h-8 items-center gap-1.5 rounded-lg bg-white/10 px-3 text-xs font-medium text-white/85 transition-colors hover:bg-white/20 hover:text-white"
         >
-          Skip <span className="opacity-60 text-[10px] ml-1">(Space)</span>
-        </Button>
-      </div>
+          <FastForward className="size-3.5" aria-hidden />
+          Skip <span className="text-white/50">Space</span>
+        </button>
+      )}
 
-      {/* Centered Countdown Animation */}
-      <div className="relative flex items-center justify-center">
-        {/* Subtle circular pulse ring */}
-        <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute size-36 lg:size-44 rounded-full border-2 border-brand/40 bg-brand/10"
-        />
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={String(step)}
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 1.25, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center justify-center select-none"
-          >
-            {step === 'GO' ? (
-              <span className="font-display text-5xl lg:text-7xl font-black tracking-tight text-white drop-shadow-[0_4px_24px_rgba(34,197,94,0.6)]">
-                GO!
-              </span>
-            ) : (
-              <span className="font-display text-6xl lg:text-8xl font-black text-white tabular-nums drop-shadow-[0_4px_24px_rgba(125,84,255,0.7)]">
-                {step}
-              </span>
+      {paused ? (
+        <div className="flex flex-col items-center gap-3 px-6 text-center">
+          <span className="grid size-14 place-items-center rounded-full border border-white/15 text-white/80">
+            <Pause className="size-6" aria-hidden />
+          </span>
+          <p className="text-sm font-medium text-white">Paused</p>
+          <p className="max-w-xs text-xs text-white/60">
+            {paused === "tab-hidden" ? "Come back to this tab to continue the countdown." : "Your camera disconnected. Reconnect it to continue."}
+          </p>
+        </div>
+      ) : (
+        <div className="relative grid size-36 place-items-center lg:size-44">
+          <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90" aria-hidden>
+            <circle cx="60" cy="60" r={R} fill="none" stroke="rgb(255 255 255 / 0.12)" strokeWidth="3" />
+            {step !== "go" && (
+              <circle
+                key={`${step}`}
+                cx="60"
+                cy="60"
+                r={R}
+                fill="none"
+                stroke="var(--sj-brand-hover)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray={CIRC}
+                strokeDashoffset={0}
+                style={reduce ? undefined : { animation: `sj-ring-deplete ${ms}ms linear forwards` }}
+              />
             )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+          </svg>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={String(step)}
+              initial={reduce ? false : { scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={reduce ? undefined : { scale: 1.15, opacity: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className={
+                step === "go"
+                  ? "font-display text-5xl font-semibold tracking-tight text-emerald-300 lg:text-6xl"
+                  : "font-display text-6xl font-semibold tabular-nums text-white lg:text-7xl"
+              }
+            >
+              {step === "go" ? "Go" : step}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+      )}
 
-      <p className="mt-6 text-xs text-white/70 font-medium tracking-wide">
-        Position your hand in the camera guide
-      </p>
+      {!paused && <p className="mt-5 text-xs text-white/70">Put your hand in the guide and make the sign</p>}
+      <span className="sr-only">{paused ? "Countdown paused" : step === "go" ? "Go" : `${step}`}</span>
     </div>
   );
 }

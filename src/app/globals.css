@@ -71,6 +71,12 @@
   --animate-sj-enter: sj-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Countdown ring (practice): one full depletion per step. */
+@keyframes sj-ring-deplete {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 339.29; }
+}
+
 /* Streak flame flicker (src/components/art/flame.tsx): transform only. */
 @keyframes sj-flicker {
   0%, 100% { transform: scale(1, 1) skewX(0deg); }
