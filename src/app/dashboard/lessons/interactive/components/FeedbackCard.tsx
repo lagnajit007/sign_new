@@ -155,7 +155,7 @@ export default function FeedbackCard({
   const canRetry = cameraOn && (phase.kind === "recognizing" || (phase.kind === "success" && phase.save !== "saving"));
 
   return (
-    <div className="rounded-xl border border-white/10 bg-zinc-900 p-3" aria-live="polite">
+    <div className="rounded-xl bg-white/[0.04] p-3" aria-live="polite">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={key}

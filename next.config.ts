@@ -1,8 +1,8 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
-// TF.js handpose downloads its model from tfhub.dev, which redirects to Kaggle / GCS.
-const MODEL_HOSTS = "https://tfhub.dev https://www.kaggle.com https://*.kaggle.com https://storage.googleapis.com";
+// MediaPipe Hand Landmarker: WASM runtime from jsdelivr, model from Google's model CDN.
+const MODEL_HOSTS = "https://storage.googleapis.com";
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
           key: 'Content-Security-Policy',
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.clerk.com https://*.clerk.accounts.dev https://*.supabase.co https://*.supabase.com https://challenges.cloudflare.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://*.clerk.com https://*.clerk.accounts.dev https://*.supabase.co https://*.supabase.com https://challenges.cloudflare.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.accounts.dev",
             "font-src 'self' https://fonts.gstatic.com https://*.clerk.accounts.dev",
             "img-src 'self' data: blob: https: https://*.clerk.com https://*.supabase.co https://*.supabase.com",

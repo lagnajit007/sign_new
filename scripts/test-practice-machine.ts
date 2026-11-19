@@ -10,6 +10,7 @@ import {
   type PracticeAction,
   type PracticeState,
 } from "../src/app/dashboard/lessons/interactive/practice-machine";
+import { OneEuroFilter, PresenceDebounce, ProbabilitySmoother } from "../src/app/dashboard/lessons/interactive/smoothing";
 
 const F = new Array(42).fill(0.1);
 const run = (s: PracticeState, ...actions: PracticeAction[]) => actions.reduce(r, s);
@@ -174,6 +175,64 @@ test("switching set starts the new set's countdown at index 0", () => {
   assert.equal(s.index, 0);
   assert.equal(s.total, 10);
   assert.deepEqual(s.phase, { kind: "countdown", step: 3 });
+});
+
+// ── Smoothing helpers ───────────────────────────────────────────────────────
+
+test("one-euro filter: steady input stays put, jitter is reduced", () => {
+  const f = new OneEuroFilter();
+  for (let t = 0; t < 1000; t += 33) assert.ok(Math.abs(f.filter(0.5, t) - 0.5) < 1e-9);
+  const g = new OneEuroFilter();
+  let rawVar = 0;
+  let outVar = 0;
+  let seed = 1;
+  const noise = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5) * 0.02;
+  for (let i = 0; i < 120; i++) {
+    const raw = 0.5 + noise();
+    const out = g.filter(raw, i * 33);
+    if (i > 10) {
+      rawVar += (raw - 0.5) ** 2;
+      outVar += (out - 0.5) ** 2;
+    }
+  }
+  assert.ok(outVar < rawVar * 0.5, `smoothed variance ${outVar} should be well below raw ${rawVar}`);
+});
+
+test("one-euro filter: follows a real move within a few frames", () => {
+  const f = new OneEuroFilter();
+  for (let t = 0; t < 300; t += 33) f.filter(0.2, t);
+  let v = 0;
+  for (let t = 300; t < 600; t += 33) v = f.filter(0.6, t);
+  assert.ok(Math.abs(v - 0.6) < 0.02, `after 300ms it should be near the new position, got ${v}`);
+});
+
+test("probability smoother: one noisy frame doesn't flip the sign", () => {
+  const classes = ["A", "B"];
+  const p = new ProbabilitySmoother();
+  for (let i = 0; i < 6; i++) p.push([0.9, 0.1], classes);
+  assert.equal(p.push([0.1, 0.9], classes).prediction, "A");
+  assert.equal(p.push([0.9, 0.1], classes).prediction, "A");
+});
+
+test("probability smoother: a sustained change flips within ~3 frames", () => {
+  const classes = ["A", "B"];
+  const p = new ProbabilitySmoother();
+  for (let i = 0; i < 6; i++) p.push([0.9, 0.1], classes);
+  let out = { prediction: "A", confidence: 0 };
+  let frames = 0;
+  while (out.prediction !== "B" && frames < 10) {
+    out = p.push([0.05, 0.95], classes);
+    frames++;
+  }
+  assert.ok(frames <= 3, `took ${frames} frames`);
+});
+
+test("presence debounce: brief dropouts keep the hand present", () => {
+  const d = new PresenceDebounce(300);
+  assert.equal(d.update(true, 0), true);
+  assert.equal(d.update(false, 200), true);
+  assert.equal(d.update(false, 301), false);
+  assert.equal(d.update(true, 400), true);
 });
 
 let failed = 0;

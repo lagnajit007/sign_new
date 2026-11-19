@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type * as handposeTypes from "@tensorflow-models/handpose";
-import { landmarksToFeatures, recognize } from "@/lib/recognizer";
+import { CLASSES, landmarksToFeatures, recognize } from "@/lib/recognizer";
+import { loadHandTracker, type HandTracker } from "./hand-tracker";
+import { LandmarkSmoother, PresenceDebounce, ProbabilitySmoother } from "./smoothing";
 import {
   CONFIDENCE_THRESHOLD,
   initialState,
@@ -23,7 +24,8 @@ export type LessonType = "alphabet" | "number";
 export type CameraStatus = "off" | "requesting" | "active" | "stopped" | "denied" | "error";
 export type ModelStatus = "loading" | "ready" | "failed";
 
-const FRAME_INTERVAL_MS = 200; // ~5 recognitions per second
+const DRAW_INTERVAL_MS = 33; // track + draw at up to ~30 fps
+const DISPATCH_INTERVAL_MS = 100; // update React state ~10x per second
 const MISS_LOG_INTERVAL_MS = 15_000;
 
 const HAND_CONNECTIONS = [
@@ -63,7 +65,8 @@ export function usePracticeSession() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const modelRef = useRef<handposeTypes.HandPose | null>(null);
+  const modelRef = useRef<HandTracker | null>(null);
+  const [videoAspect, setVideoAspect] = useState(4 / 3);
   const streamRef = useRef<MediaStream | null>(null);
   const mountedRef = useRef(true);
   const lastMissRef = useRef<Map<string, number>>(new Map());
@@ -92,25 +95,19 @@ export function usePracticeSession() {
       .catch(() => {});
   }, []);
 
-  // ── Hand-tracking model ────────────────────────────────────────────────────
+  // ── Hand-tracking model (MediaPipe Hand Landmarker) ───────────────────────
   useEffect(() => {
     mountedRef.current = true;
     let cancelled = false;
-    (async () => {
-      try {
-        const tf = await import("@tensorflow/tfjs");
-        await import("@tensorflow/tfjs-backend-webgl");
-        const handpose = await import("@tensorflow-models/handpose");
-        await tf.ready();
-        await tf.setBackend("webgl");
-        const model = await handpose.load({ detectionConfidence: 0.8, maxContinuousChecks: 5, iouThreshold: 0.3, scoreThreshold: 0.75 });
+    loadHandTracker()
+      .then((tracker) => {
         if (cancelled) return;
-        modelRef.current = model;
+        modelRef.current = tracker;
         setModelStatus("ready");
-      } catch {
+      })
+      .catch(() => {
         if (!cancelled) setModelStatus("failed");
-      }
-    })();
+      });
     return () => {
       cancelled = true;
       mountedRef.current = false;
@@ -179,9 +176,12 @@ export function usePracticeSession() {
         };
       });
       // Match the overlay canvas to the real video size so landmarks line up.
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      setVideoAspect(vw / vh);
       if (canvasRef.current) {
-        canvasRef.current.width = video.videoWidth || 640;
-        canvasRef.current.height = video.videoHeight || 480;
+        canvasRef.current.width = vw;
+        canvasRef.current.height = vh;
       }
       try {
         await video.play();
@@ -237,90 +237,136 @@ export function usePracticeSession() {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
-  // ── Detection loop: only while recognizing, one frame in flight at a time ─
+  // ── Detection loop: only while recognizing ────────────────────────────────
+  // Tracks and draws up to ~30 fps from smoothed landmarks; feeds the state
+  // machine ~10x per second with a smoothed prediction so one noisy frame
+  // can't reset the hold.
   const recognizing = state.phase.kind === "recognizing" && camera === "active";
+  const holdingRef = useRef(false);
+  holdingRef.current = state.phase.kind === "recognizing" && state.phase.sub === "holding";
   useEffect(() => {
-    if (!recognizing) {
+    const clear = () => {
       const c = canvasRef.current;
       c?.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+    };
+    if (!recognizing) {
+      clear();
       return;
     }
+    const smoother = new LandmarkSmoother();
+    const probs = new ProbabilitySmoother();
+    const presence = new PresenceDebounce(300);
+    let lastMatchFeatures: number[] | undefined;
     let raf = 0;
-    let last = 0;
-    let busy = false;
+    let lastDraw = 0;
+    let lastDispatch = 0;
     let stopped = false;
+    let wasPresent = false;
 
-    const draw = (landmarks: number[][] | null) => {
+    const draw = (pts: [number, number][]) => {
       const c = canvasRef.current;
       const ctx = c?.getContext("2d");
       if (!c || !ctx) return;
       ctx.clearRect(0, 0, c.width, c.height);
-      if (!landmarks) return;
-      ctx.strokeStyle = "#9b85ff";
-      ctx.lineWidth = 2.5;
+      const w = c.width;
+      const h = c.height;
+      const holding = holdingRef.current;
+      ctx.lineWidth = Math.max(2, w / 260);
+      ctx.lineCap = "round";
+      ctx.strokeStyle = holding ? "rgba(110, 231, 183, 0.9)" : "rgba(167, 139, 250, 0.85)";
+      ctx.beginPath();
       for (const [a, b] of HAND_CONNECTIONS) {
-        ctx.beginPath();
-        ctx.moveTo(landmarks[a][0], landmarks[a][1]);
-        ctx.lineTo(landmarks[b][0], landmarks[b][1]);
-        ctx.stroke();
+        ctx.moveTo(pts[a][0] * w, pts[a][1] * h);
+        ctx.lineTo(pts[b][0] * w, pts[b][1] * h);
       }
-      ctx.fillStyle = "#c4b5fd";
-      for (const [x, y] of landmarks) {
+      ctx.stroke();
+      ctx.fillStyle = holding ? "#d1fae5" : "#ede9fe";
+      const r = Math.max(2.5, w / 220);
+      for (const [x, y] of pts) {
         ctx.beginPath();
-        ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+        ctx.arc(x * w, y * h, r, 0, Math.PI * 2);
         ctx.fill();
       }
     };
 
-    const tick = async (now: number) => {
+    const tick = (now: number) => {
       if (stopped) return;
       raf = requestAnimationFrame(tick);
-      if (busy || now - last < FRAME_INTERVAL_MS) return;
+      if (now - lastDraw < DRAW_INTERVAL_MS) return;
       const video = videoRef.current;
-      const model = modelRef.current;
-      if (!video || !model || video.readyState < 2) return;
-      busy = true;
-      last = now;
-      try {
-        const hands = await model.estimateHands(video);
-        if (stopped) return;
-        const sign = targetRef.current;
-        if (!hands.length) {
-          draw(null);
-          dispatch({ type: "FRAME", now: performance.now(), target: sign, hand: false });
-          return;
-        }
-        const landmarks = hands[0].landmarks as number[][];
-        draw(landmarks);
-        const features = landmarksToFeatures(landmarks, video.videoWidth, video.videoHeight);
-        if (!features) return;
-        const { prediction, confidence } = recognize(features);
-        dispatch({ type: "FRAME", now: performance.now(), target: sign, hand: true, prediction, confidence, features });
+      const tracker = modelRef.current;
+      if (!video || !tracker || video.readyState < 2) return;
+      lastDraw = now;
 
-        // A confident wrong sign is a real attempt worth remembering ("Needs practice").
-        if (prediction !== sign && confidence >= CONFIDENCE_THRESHOLD) {
-          const lastMiss = lastMissRef.current.get(sign) ?? 0;
-          if (Date.now() - lastMiss > MISS_LOG_INTERVAL_MS) {
-            lastMissRef.current.set(sign, Date.now());
-            void fetch("/api/attempts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ signLabel: sign, lessonType: lessonTypeRef.current, features }),
-            }).catch(() => {});
-          }
-        }
+      let raw: [number, number][] | null = null;
+      try {
+        raw = tracker.detect(video, now);
       } catch {
-        /* skip this frame */
-      } finally {
-        busy = false;
+        return; // skip this frame
+      }
+      const present = presence.update(raw !== null, now);
+      const sign = targetRef.current;
+      const dueDispatch = now - lastDispatch >= DISPATCH_INTERVAL_MS;
+
+      if (!present) {
+        if (wasPresent) {
+          smoother.reset();
+          probs.reset();
+          lastMatchFeatures = undefined;
+          clear();
+        }
+        wasPresent = false;
+        if (dueDispatch) {
+          lastDispatch = now;
+          dispatch({ type: "FRAME", now, target: sign, hand: false });
+        }
+        return;
+      }
+      wasPresent = true;
+      if (!raw) return; // brief dropout inside the grace period: keep the last state
+
+      const pts = smoother.smooth(raw, now);
+      draw(pts);
+      const features = landmarksToFeatures(pts, 1, 1);
+      if (!features) return;
+      const frame = recognize(features);
+      // Only submit features that the server will classify the same way.
+      if (frame.prediction === sign && frame.confidence >= CONFIDENCE_THRESHOLD) lastMatchFeatures = features;
+      const smoothed = probs.push(frame.probabilities, CLASSES);
+
+      if (dueDispatch) {
+        lastDispatch = now;
+        dispatch({
+          type: "FRAME",
+          now,
+          target: sign,
+          hand: true,
+          prediction: smoothed.prediction,
+          confidence: smoothed.confidence,
+          features: smoothed.prediction === sign ? lastMatchFeatures : undefined,
+        });
+      }
+
+      // A confident wrong sign is a real attempt worth remembering ("Needs practice").
+      if (smoothed.prediction !== sign && smoothed.confidence >= CONFIDENCE_THRESHOLD) {
+        const lastMiss = lastMissRef.current.get(sign) ?? 0;
+        if (Date.now() - lastMiss > MISS_LOG_INTERVAL_MS) {
+          lastMissRef.current.set(sign, Date.now());
+          void fetch("/api/attempts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ signLabel: sign, lessonType: lessonTypeRef.current, features }),
+          }).catch(() => {});
+        }
       }
     };
     raf = requestAnimationFrame(tick);
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
+      clear();
     };
-  }, [recognizing]);
+  }, [recognizing, state.attempt]);
 
   // ── Save each success exactly once (and again only on explicit retry) ────
   const saveKey =
@@ -409,6 +455,7 @@ export function usePracticeSession() {
     target,
     nextSign: state.index < lessons.length - 1 ? lessons[state.index + 1] : null,
     modelStatus,
+    videoAspect,
     camera,
     cameraError,
     needsManualPlay,

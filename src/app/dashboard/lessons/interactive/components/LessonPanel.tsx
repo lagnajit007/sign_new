@@ -43,7 +43,7 @@ export default function LessonPanel({
       <div className="flex shrink-0 items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-fg-subtle">
-            {lessonType === "alphabet" ? "Alphabet" : "Numbers"} · {kind} {index + 1} of {lessons.length}
+            {kind} {index + 1} of {lessons.length}
           </p>
           <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-fg">
             Learn <span className="text-brand">{target}</span>

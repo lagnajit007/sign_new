@@ -16,6 +16,8 @@ interface CameraPanelProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   handDetected?: boolean;
   isCorrectCandidate?: boolean;
+  /** Real video aspect ratio, so the video and landmark canvas share one box. */
+  videoAspect?: number;
   onStart: () => void;
   onStop: () => void;
   onRestart: () => void;
@@ -32,45 +34,34 @@ export default function CameraPanel({
   canvasRef,
   handDetected = false,
   isCorrectCandidate = false,
+  videoAspect = 4 / 3,
   onStart,
   onRestart,
   onManualPlay,
   children,
 }: CameraPanelProps) {
   return (
-    <div
-      className="relative bg-zinc-950 rounded-2xl overflow-hidden flex-1 min-h-0 flex items-center justify-center border border-white/10"
-      style={{ aspectRatio: '4/3' }}
-    >
-      {/* Video element - always in DOM for ref stability */}
-      <video
-        ref={videoRef as React.Ref<HTMLVideoElement>}
-        playsInline
-        muted
-        width={640}
-        height={480}
-        className={`w-full h-full object-contain ${cameraState === 'active' ? '' : 'hidden'}`}
-        style={{ transform: 'scaleX(-1)' }} // Mirror view for natural interaction
-      />
-
-      {/* Canvas overlay for MediaPipe landmarks */}
-      <canvas
-        ref={canvasRef as React.Ref<HTMLCanvasElement>}
-        width={640}
-        height={480}
-        className={`absolute inset-0 w-full h-full pointer-events-none ${
-          cameraState === 'active' ? '' : 'hidden'
-        }`}
-        style={{ transform: 'scaleX(-1)' }} // Mirrored to match video
-      />
-
-      {/* Subtle hand positioning framing guide */}
-      {cameraState === 'active' && (
-        <HandGuideOverlay
-          handDetected={handDetected}
-          isCorrectCandidate={isCorrectCandidate}
+    <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black [container-type:size]">
+      {/* Video + landmark canvas share one box sized to the camera's aspect ratio,
+          fitted inside the available space, so the skeleton lines up exactly. */}
+      <div
+        className={`relative ${cameraState === 'active' ? '' : 'invisible'}`}
+        style={{ aspectRatio: String(videoAspect), width: `min(100cqw, calc(100cqh * ${videoAspect}))` }}
+      >
+        <video
+          ref={videoRef as React.Ref<HTMLVideoElement>}
+          playsInline
+          muted
+          className="absolute inset-0 h-full w-full -scale-x-100 object-cover"
         />
-      )}
+        <canvas
+          ref={canvasRef as React.Ref<HTMLCanvasElement>}
+          width={640}
+          height={480}
+          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100"
+        />
+        {cameraState === 'active' && <HandGuideOverlay handDetected={handDetected} isCorrectCandidate={isCorrectCandidate} />}
+      </div>
 
       {/* Manual play overlay if browser prevented autoplay */}
       {cameraState === 'active' && needsManualPlay && (
@@ -87,11 +78,11 @@ export default function CameraPanel({
 
       {/* Camera stopped state */}
       {cameraState === 'stopped' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 text-white p-6">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
           <div className="size-14 rounded-full bg-zinc-800 flex items-center justify-center mb-3">
             <CameraOff className="size-6 text-zinc-400" />
           </div>
-          <p className="text-base font-semibold mb-1">{cameraError ? 'Camera disconnected' : 'Camera stopped'}</p>
+          <p className="text-base font-semibold mb-1">{cameraError ? 'Camera disconnected' : 'Camera is off'}</p>
           <p className="text-xs text-zinc-400 mb-5 text-center max-w-xs">
             {cameraError ?? "Start it again when you're ready to keep practising."}
           </p>
@@ -103,29 +94,19 @@ export default function CameraPanel({
 
       {/* Camera off / Initial state */}
       {cameraState === 'off' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-white p-6 text-center">
-          <div className="size-20 rounded-full bg-brand/10 border-2 border-dashed border-brand/30 flex items-center justify-center mb-4">
-            <Camera className="size-8 text-brand" />
-          </div>
-          <h2 className="text-lg font-bold mb-1">Start Camera Practice</h2>
-          <p className="text-xs text-zinc-400 max-w-xs mb-6 leading-relaxed">
-            Enable your webcam to practice sign language with real-time in-browser AI recognition. Video never leaves your device.
-          </p>
-          <Button
-            variant="primary"
-            size="md"
-            icon={Camera}
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white">
+          <Camera className="mb-4 size-7 text-zinc-500" aria-hidden />
+          <h2 className="text-base font-semibold">Turn on your camera to practise</h2>
+          <p className="mt-1 mb-5 max-w-xs text-sm text-zinc-400">Your video stays on this device.</p>
+          <button
+            type="button"
             onClick={onStart}
-            loading={isModelLoading}
-            className="shadow-lg shadow-brand/20"
+            disabled={isModelLoading}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--sj-brand-hover)] px-4 text-sm font-medium text-white transition-colors hover:bg-[#7c5cff] disabled:opacity-60"
           >
-            {isModelLoading ? 'Loading AI Model…' : 'Start Camera'}
-          </Button>
-          {isModelLoading && (
-            <div className="mt-4">
-              <CameraInitLoader message="Loading Sign Recognition..." />
-            </div>
-          )}
+            <Camera className="size-4" aria-hidden />
+            {isModelLoading ? 'Loading hand tracking…' : 'Start camera'}
+          </button>
         </div>
       )}
 
@@ -141,38 +122,27 @@ export default function CameraPanel({
 
       {/* Permission denied */}
       {cameraState === 'denied' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/40 text-white p-6 text-center">
-          <div className="size-14 rounded-full bg-red-500/20 flex items-center justify-center mb-3">
-            <ShieldAlert className="size-6 text-red-400" />
-          </div>
-          <p className="text-base font-bold mb-1 text-red-300">Camera Access Denied</p>
-          <p className="text-xs text-zinc-300 mb-5 max-w-xs leading-relaxed">
-            Sanjog needs camera access to track your signs. Please enable camera permissions in your browser URL bar.
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white">
+          <ShieldAlert className="mb-3 size-7 text-amber-300" aria-hidden />
+          <p className="text-base font-semibold">Camera access is blocked</p>
+          <p className="mt-1 mb-5 max-w-xs text-sm text-zinc-400">
+            Allow the camera from the icon in your browser&apos;s address bar, then try again.
           </p>
           <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onRestart}>
-            Try Again
+            Try again
           </Button>
         </div>
       )}
 
       {/* Error state */}
       {cameraState === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-orange-950/40 text-white p-6 text-center">
-          <div className="size-14 rounded-full bg-orange-500/20 flex items-center justify-center mb-3">
-            <AlertTriangle className="size-6 text-orange-400" />
-          </div>
-          <p className="text-base font-bold mb-1 text-orange-300">Camera Error</p>
-          <p className="text-xs text-zinc-300 mb-5 max-w-xs leading-relaxed">
-            {cameraError || 'Unable to connect to camera device.'}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onRestart}>
-              Retry Camera
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-              Refresh
-            </Button>
-          </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white">
+          <AlertTriangle className="mb-3 size-7 text-amber-300" aria-hidden />
+          <p className="text-base font-semibold">The camera didn&apos;t start</p>
+          <p className="mt-1 mb-5 max-w-xs text-sm text-zinc-400">{cameraError || 'Check that no other app is using it, then try again.'}</p>
+          <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onRestart}>
+            Try again
+          </Button>
         </div>
       )}
     </div>

@@ -146,22 +146,11 @@ export default function InteractiveLessonPage() {
             <section
               aria-label="Camera practice"
               className={cn(
-                "min-h-0 flex-col gap-3 overflow-hidden rounded-xl bg-zinc-950 p-3",
+                // Light focus ring on the dark panel (the brand violet is too dark here).
+                "min-h-0 flex-col gap-3 overflow-hidden rounded-xl bg-zinc-950 p-3 [&_*:focus-visible]:outline-violet-300",
                 mobileTab === "camera" ? "flex" : "hidden lg:flex",
               )}
             >
-              <div className="flex shrink-0 items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-xs text-zinc-300">
-                  <span className={cn("size-1.5 rounded-full", cameraOn ? "bg-emerald-400" : "bg-zinc-500")} aria-hidden />
-                  {!cameraOn ? "Camera off" : countdown ? "Get ready" : recognizingSub ? "Recognising" : phase.kind === "success" ? "Done" : "Ready"}
-                </span>
-                {state.session.xp > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-xs text-zinc-200">
-                    <Sparkles className="size-3 text-amber-300" aria-hidden /> +{state.session.xp} XP this session
-                  </span>
-                )}
-              </div>
-
               <CameraPanel
                 cameraState={s.camera}
                 cameraError={s.cameraError}
@@ -171,6 +160,7 @@ export default function InteractiveLessonPage() {
                 canvasRef={s.canvasRef}
                 handDetected={recognizingSub !== null && recognizingSub !== "waiting"}
                 isCorrectCandidate={recognizingSub === "holding"}
+                videoAspect={s.videoAspect}
                 onStart={actions.startCamera}
                 onStop={actions.stopCamera}
                 onRestart={actions.startCamera}
@@ -201,7 +191,7 @@ export default function InteractiveLessonPage() {
                 />
               </div>
 
-              <div className="flex shrink-0 items-center justify-between text-[11px] text-zinc-500">
+              <div className="flex shrink-0 items-center justify-between text-[11px] text-zinc-400">
                 {cameraOn ? (
                   <button
                     type="button"
@@ -213,8 +203,15 @@ export default function InteractiveLessonPage() {
                 ) : (
                   <span />
                 )}
-                <span className="hidden sm:inline">
-                  {countdown ? "Space to skip" : phase.kind === "success" && phase.save !== "saving" ? "Space to continue" : "← → to change sign"}
+                <span className="flex items-center gap-3">
+                  {state.session.xp > 0 && (
+                    <span className="inline-flex items-center gap-1 text-zinc-300">
+                      <Sparkles className="size-3 text-amber-300" aria-hidden /> +{state.session.xp} XP
+                    </span>
+                  )}
+                  <span className="hidden sm:inline">
+                    {countdown ? "Space to skip" : phase.kind === "success" && phase.save !== "saving" ? "Space to continue" : "← → to change sign"}
+                  </span>
                 </span>
               </div>
             </section>
