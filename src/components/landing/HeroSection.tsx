@@ -3,9 +3,10 @@
 import { useRef, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { SignedIn, SignedOut, SignUpButton, SignInButton } from "@clerk/nextjs"
+import { SignedIn, SignedOut, SignUpButton } from "@clerk/nextjs"
 import { ArrowRight, Play } from "lucide-react"
 import { useHeroTimeline } from "@/lib/animations"
+import { Button } from "@/components/arc/button/button"
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null!)
@@ -41,10 +42,10 @@ export default function HeroSection() {
             <div className="hero-cta flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
               <SignedOut>
                 <SignUpButton mode="redirect">
-                  <button className="inline-flex items-center gap-2 px-8 py-3.5 bg-brand text-white rounded-full text-base font-semibold hover:bg-brand-dark transition-all hover:scale-[1.03] active:scale-[0.98] shadow-btn">
+                  <Button size="lg">
                     Start Learning Free
                     <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </SignUpButton>
               </SignedOut>
               <SignedIn>
@@ -56,10 +57,10 @@ export default function HeroSection() {
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </SignedIn>
-              <button className="inline-flex items-center gap-2 px-8 py-3.5 text-ink border-2 border-brand-soft rounded-full text-base font-medium hover:border-brand hover:text-brand transition-all hover:scale-[1.02]">
+              <a href="#how-it-works" className="inline-flex items-center gap-2 px-8 py-3.5 text-ink border-2 border-brand-soft rounded-full text-base font-medium hover:border-brand hover:text-brand transition-all hover:scale-[1.02]">
                 <Play className="w-4 h-4" />
-                Watch Demo
-              </button>
+                See how it works
+              </a>
             </div>
 
             <div className="hero-subtitle mt-8 flex flex-wrap items-center gap-6 justify-center lg:justify-start text-sm text-ink-soft">
@@ -73,7 +74,7 @@ export default function HeroSection() {
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-success rounded-full" />
-                Free to start
+                Video stays on your device
               </span>
             </div>
           </div>
@@ -98,7 +99,7 @@ export default function HeroSection() {
                 </div>
                 <div>
                   <div className="text-xs text-ink-soft">Recognition</div>
-                  <div className="text-sm font-bold text-success">98% Accurate</div>
+                  <div className="text-sm font-bold text-success">Instant feedback</div>
                 </div>
               </div>
             </div>
@@ -109,8 +110,8 @@ export default function HeroSection() {
                   <span className="text-gold text-lg">✦</span>
                 </div>
                 <div>
-                  <div className="text-xs text-ink-soft">XP Earned</div>
-                  <div className="text-sm font-bold text-gold">+2,450</div>
+                  <div className="text-xs text-ink-soft">Every correct sign</div>
+                  <div className="text-sm font-bold text-gold">+10 XP</div>
                 </div>
               </div>
             </div>

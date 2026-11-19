@@ -1,206 +1,332 @@
-import { Bell } from "lucide-react";
-import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
-import { currentUser } from "@clerk/nextjs/server";
-import { getTimeOfDay } from "@/utils/date-utils";
+import { Award, CheckCircle2, Flame, Hand, Sparkles, Target } from "lucide-react";
+import { redirect } from "next/navigation";
 import { getOrCreateUser } from "@/lib/user";
-import { computeUserStats } from "@/lib/stats";
+import { computeUserStats, ALPHABET_COUNT, NUMBER_COUNT } from "@/lib/stats";
 import { prisma } from "@/lib/prisma";
 import { levelForXp, nextLevelXp, totalXpForLevel } from "@/lib/gamification";
-import { levelTitle, formatXp } from "@/lib/dashboard-utils";
-
-import WelcomeHero from "@/components/dashboard/WelcomeHero";
-import KpiGrid from "@/components/dashboard/KpiGrid";
-import ContinueLearning from "@/components/dashboard/ContinueLearning";
-import DailyQuest from "@/components/dashboard/DailyQuest";
-import LevelProgress from "@/components/dashboard/LevelProgress";
-import RecentAchievements from "@/components/dashboard/RecentAchievements";
-import LeaderboardPreview from "@/components/dashboard/LeaderboardPreview";
-import RecentActivity from "@/components/dashboard/RecentActivity";
-import CommunityHighlights from "@/components/dashboard/CommunityHighlights";
+import { activityUserWhere, displayName, leaderboardUserWhere, publicUserSelect } from "@/lib/community";
+import { challengeCount, completedThisPeriod } from "@/lib/challenges";
+import { Avatar } from "@/components/app/avatar";
+import { ActivityBars, Sparkline } from "@/components/app/charts";
+import {
+  Badge,
+  ButtonLink,
+  DemoBadge,
+  EmptyState,
+  PageBody,
+  Panel,
+  ProgressBar,
+  Stat,
+  timeAgo,
+} from "@/components/app/primitives";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Overview · Sanjog" };
 
-export default async function Dashboard() {
-  let clerkUser: Awaited<ReturnType<typeof currentUser>> | null = null;
-  let dbUser: Awaited<ReturnType<typeof getOrCreateUser>> | null = null;
-  let stats: Awaited<ReturnType<typeof computeUserStats>> | null = null;
+const DAY = 86_400_000;
+const DAILY_GOAL = 15;
+const ORDER = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ", ..."0123456789"];
 
-  let topUsers: Awaited<ReturnType<typeof prisma.user.findMany>> = [];
-  let recentActivity: Awaited<ReturnType<typeof prisma.recognitionAttempt.findMany>> = [];
-  let earnedAchievements: Awaited<ReturnType<typeof prisma.userAchievement.findMany>> = [];
-  let userChallenges: Awaited<ReturnType<typeof prisma.userChallenge.findMany>> = [];
-  let currentLesson: { signLabel: string; lessonType: string; completed: boolean; bestAccuracy: number } | null = null;
-  let userRank = 0;
-  let completedLetters: string[] = [];
-  let communityFeed: Awaited<ReturnType<typeof prisma.recognitionAttempt.findMany>> = [];
+export default async function OverviewPage() {
+  const user = await getOrCreateUser();
+  if (!user) redirect("/sign-in");
 
-  try {
-    clerkUser = await currentUser();
-    dbUser = await getOrCreateUser();
-  } catch {}
+  const now = new Date();
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const weekStart = new Date(todayStart.getTime() - 6 * DAY);
 
-  if (dbUser) {
-    const userId = dbUser.id;
+  const [stats, weekAttempts, mastered, leaders, feed, challenges, userChallenges, recentUnlocks] = await Promise.all([
+    computeUserStats(user.id),
+    prisma.recognitionAttempt.findMany({
+      where: { userId: user.id, createdAt: { gte: weekStart } },
+      select: { createdAt: true, correct: true },
+    }),
+    prisma.signProgress.findMany({ where: { userId: user.id, completed: true }, select: { signLabel: true } }),
+    prisma.user.findMany({
+      where: leaderboardUserWhere(),
+      orderBy: [{ xp: "desc" }, { createdAt: "asc" }],
+      take: 5,
+      select: publicUserSelect,
+    }),
+    prisma.recognitionAttempt.findMany({
+      where: { correct: true, userId: { not: user.id }, user: activityUserWhere() },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { user: { select: publicUserSelect } },
+    }),
+    prisma.challenge.findMany({ orderBy: { rewardXp: "asc" } }),
+    prisma.userChallenge.findMany({ where: { userId: user.id } }),
+    prisma.userAchievement.findMany({
+      where: { userId: user.id, unlockedAt: { not: null } },
+      orderBy: { unlockedAt: "desc" },
+      take: 3,
+      include: { achievement: true },
+    }),
+  ]);
 
-    try {
-      stats = await computeUserStats(userId);
-    } catch {}
+  const rank =
+    (await prisma.user.count({ where: { AND: [leaderboardUserWhere(), { xp: { gt: user.xp } }] } })) + 1;
 
-    try {
-      [topUsers, recentActivity, earnedAchievements, userChallenges, userRank] = await Promise.all([
-        prisma.user.findMany({ orderBy: { xp: "desc" }, take: 5 }),
-        prisma.recognitionAttempt.findMany({
-          where: { userId },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        }),
-        prisma.userAchievement.findMany({
-          where: { userId, unlockedAt: { not: null } },
-          include: { achievement: true },
-          orderBy: { unlockedAt: "desc" },
-          take: 8,
-        }),
-        prisma.userChallenge.findMany({
-          where: { userId },
-          include: { challenge: true },
-        }),
-        prisma.user.count({ where: { xp: { gt: dbUser.xp } } }).then((c) => c + 1),
-      ]);
-    } catch {}
+  // Week buckets (UTC days).
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const start = new Date(weekStart.getTime() + i * DAY);
+    const inDay = weekAttempts.filter((a) => a.createdAt >= start && a.createdAt.getTime() < start.getTime() + DAY);
+    return {
+      label: start.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }),
+      total: inDay.length,
+      highlight: inDay.filter((a) => a.correct).length,
+    };
+  });
+  const todayCorrect = week[6].highlight;
+  const weekCorrect = week.reduce((s, d) => s + d.highlight, 0);
 
-    try {
-      const progress = await prisma.signProgress.findMany({
-        where: { userId },
-        select: { signLabel: true, lessonType: true, completed: true, bestAccuracy: true },
-        orderBy: [{ lessonType: "asc" }, { signLabel: "asc" }],
-      });
+  const masteredSet = new Set(mastered.map((m) => m.signLabel));
+  const nextSign = ORDER.find((s) => !masteredSet.has(s)) ?? null;
+  const nextSet = nextSign && /\d/.test(nextSign) ? "number" : "alphabet";
 
-      completedLetters = progress.filter((p) => p.completed).map((p) => p.signLabel);
+  const level = levelForXp(user.xp);
+  const floor = totalXpForLevel(level);
+  const next = nextLevelXp(user.xp);
 
-      const nextUncompleted = progress.find((p) => !p.completed);
-      if (nextUncompleted) {
-        currentLesson = nextUncompleted;
-      }
-    } catch {}
+  const openChallenges = await Promise.all(
+    challenges
+      .filter((c) => !completedThisPeriod(userChallenges.find((u) => u.challengeId === c.id)?.completedAt, c.period, now))
+      .slice(0, 3)
+      .map(async (c) => ({
+        ...c,
+        current: Math.min(c.goal, await challengeCount(prisma, user.id, c.key, c.period, user.streakDays, now)),
+      })),
+  );
 
-    try {
-      communityFeed = await prisma.recognitionAttempt.findMany({
-        where: {
-          correct: true,
-          userId: { not: userId },
-        },
-        include: { user: { select: { name: true, xp: true, level: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      });
-    } catch {}
-  }
-
-  const xp = dbUser?.xp ?? 0;
-  const level = levelForXp(xp);
-  const nextXp = nextLevelXp(xp);
-  const floorXp = totalXpForLevel(level);
-  const xpIntoLevel = xp - floorXp;
-  const xpForLevel = nextXp - floorXp;
-  const levelProgress = xpForLevel > 0 ? Math.min(100, Math.round((xpIntoLevel / xpForLevel) * 100)) : 0;
-  const streakDays = dbUser?.streakDays ?? 0;
-  const lessonsCompleted = stats?.lessonsCompleted ?? 0;
-  const signsMastered = lessonsCompleted;
-  const accuracy = stats ? Math.round(stats.overallAccuracy * 100) : 0;
-  const challengesDone = stats?.challengesCompleted ?? 0;
-  const totalAttempts = stats?.totalAttempts ?? 0;
-  const correctAttempts = stats?.correctAttempts ?? 0;
-
-  const firstName = clerkUser?.firstName || clerkUser?.fullName?.split(" ")[0] || "there";
-  const timeOfDay = getTimeOfDay();
-
-  const dailyGoal = 5;
-  const dailyProgress = Math.min(dailyGoal, totalAttempts);
-  const dailyPct = Math.min(100, Math.round((dailyProgress / dailyGoal) * 100));
-
-  const activeChallenge = userChallenges.find((uc) => !uc.completed);
+  const firstName = user.name?.split(" ")[0];
+  const nowMs = now.getTime();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-      <div className="flex justify-end items-center gap-3">
-        <button className="relative p-2.5 bg-brand-soft rounded-lg hover:bg-brand-soft/70 transition-colors">
-          <Bell className="w-5 h-5 text-ink-soft" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-coral rounded-full flex items-center justify-center text-[10px] text-white font-bold">3</span>
-        </button>
-        <Link href="/dashboard/profile">
-          <div className="px-3 py-2 flex items-center gap-3 bg-brand-soft rounded-lg cursor-pointer hover:bg-brand-soft transition-colors">
-            <span className="text-gray-600 font-medium text-sm">{firstName}</span>
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "w-8 h-8" } }} />
-          </div>
-        </Link>
+    <PageBody className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[15px] font-medium text-fg">{firstName ? `Welcome back, ${firstName}` : "Welcome back"}</p>
+          <p className="text-[13px] text-fg-subtle">
+            {stats.totalAttempts === 0
+              ? "Start your first lesson to see your progress here."
+              : `${weekCorrect} correct sign${weekCorrect === 1 ? "" : "s"} this week.`}
+          </p>
+        </div>
+        {nextSign && (
+          <ButtonLink variant="primary" href={`/dashboard/lessons/interactive?set=${nextSet}&sign=${nextSign}`}>
+            <Hand aria-hidden /> Practice “{nextSign}”
+          </ButtonLink>
+        )}
       </div>
 
-      <WelcomeHero
-        clerkUser={clerkUser}
-        firstName={firstName}
-        timeOfDay={timeOfDay}
-        level={level}
-        levelTitle={levelTitle(level)}
-        xp={xp}
-        nextXp={nextXp}
-        streakDays={streakDays}
-        dailyProgress={dailyProgress}
-        dailyGoal={dailyGoal}
-        dailyPct={dailyPct}
-      />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat
+          label="Total XP"
+          icon={<Sparkles />}
+          value={user.xp.toLocaleString()}
+          hint={`Level ${level} · ${Math.max(0, next - user.xp).toLocaleString()} XP to level ${level + 1}`}
+          trend={<Sparkline values={week.map((d) => d.highlight)} />}
+        />
+        <Stat
+          label="Streak"
+          icon={<Flame />}
+          value={`${user.streakDays} day${user.streakDays === 1 ? "" : "s"}`}
+          hint={todayCorrect > 0 ? "Practised today" : "Practise today to keep it going"}
+        />
+        <Stat
+          label="Signs mastered"
+          icon={<CheckCircle2 />}
+          value={
+            <>
+              {stats.lessonsCompleted}
+              <span className="text-base font-normal text-fg-subtle"> / {ALPHABET_COUNT + NUMBER_COUNT}</span>
+            </>
+          }
+          hint={`${stats.alphabetCompleted} letters · ${stats.numberCompleted} numbers`}
+        />
+        <Stat
+          label="Accuracy"
+          icon={<Target />}
+          value={stats.totalAttempts ? `${Math.round(stats.overallAccuracy * 100)}%` : "—"}
+          hint={`${stats.correctAttempts.toLocaleString()} of ${stats.totalAttempts.toLocaleString()} attempts`}
+        />
+      </div>
 
-      <KpiGrid
-        level={level}
-        levelTitle={levelTitle(level)}
-        levelProgress={levelProgress}
-        xp={xp}
-        nextXp={nextXp}
-        accuracy={accuracy}
-        totalAttempts={totalAttempts}
-        correctAttempts={correctAttempts}
-        signsMastered={signsMastered}
-        streakDays={streakDays}
-        lessonsCompleted={lessonsCompleted}
-        challengesDone={challengesDone}
-        userRank={userRank}
-        topUsers={topUsers}
-      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel
+          className="lg:col-span-2"
+          title="This week"
+          description="Recognition attempts per day (UTC)"
+          action={<ButtonLink variant="ghost" href="/dashboard/progress">View progress</ButtonLink>}
+        >
+          {stats.totalAttempts === 0 ? (
+            <EmptyState
+              icon={<Hand />}
+              title="No practice yet"
+              description="Each sign you try with the camera shows up here."
+              action={<ButtonLink variant="primary" href="/dashboard/lessons">Browse lessons</ButtonLink>}
+            />
+          ) : (
+            <ActivityBars data={week} height={150} />
+          )}
+        </Panel>
 
-      <ContinueLearning
-        currentLesson={currentLesson}
-        completedLetters={completedLetters}
-        lessonsCompleted={lessonsCompleted}
-      />
+        <Panel title="Up next">
+          {nextSign ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <div className="grid size-16 place-items-center rounded-xl bg-brand-tint font-display text-3xl font-semibold text-brand">
+                  {nextSign}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-fg">
+                    {nextSet === "number" ? "Number" : "Letter"} {nextSign}
+                  </p>
+                  <p className="text-xs text-fg-subtle">
+                    {ORDER.indexOf(nextSign) + 1} of {ORDER.length} in the course
+                  </p>
+                </div>
+              </div>
+              <div>
+                <div className="mb-1.5 flex justify-between text-xs">
+                  <span className="text-fg-muted">Daily goal</span>
+                  <span className="tabular-nums text-fg-subtle">
+                    {Math.min(todayCorrect, DAILY_GOAL)} / {DAILY_GOAL} correct
+                  </span>
+                </div>
+                <ProgressBar value={(todayCorrect / DAILY_GOAL) * 100} label="Daily goal" />
+              </div>
+              <ButtonLink variant="primary" href={`/dashboard/lessons/interactive?set=${nextSet}&sign=${nextSign}`}>
+                Start practice
+              </ButtonLink>
+            </div>
+          ) : (
+            <EmptyState icon={<Award />} title="Course complete" description="You've mastered every sign. Keep practising to hold your streak." />
+          )}
+        </Panel>
+      </div>
 
-      <DailyQuest activeChallenge={activeChallenge} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel
+          className="lg:col-span-2"
+          title="Leaderboard"
+          description={`You're #${rank} by lifetime XP`}
+          action={<ButtonLink variant="ghost" href="/dashboard/leaderboard">See all</ButtonLink>}
+          bodyClassName="p-0"
+        >
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-fg-subtle">
+                <th className="w-10 px-4 py-2 font-normal">#</th>
+                <th className="px-2 py-2 font-normal">Learner</th>
+                <th className="hidden px-2 py-2 font-normal sm:table-cell">Level</th>
+                <th className="hidden px-2 py-2 font-normal sm:table-cell">Streak</th>
+                <th className="px-4 py-2 text-right font-normal">XP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaders.map((u, i) => (
+                <tr key={u.id} className={u.id === user.id ? "bg-brand-tint" : "border-b border-line last:border-0"}>
+                  <td className="px-4 py-2.5 tabular-nums text-fg-subtle">{i + 1}</td>
+                  <td className="px-2 py-2.5">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Avatar name={displayName(u)} avatarId={u.avatarId} />
+                      <span className="truncate text-fg">{displayName(u)}</span>
+                      {u.id === user.id && <Badge tone="brand">You</Badge>}
+                      {u.isDemo && <DemoBadge />}
+                    </span>
+                  </td>
+                  <td className="hidden px-2 py-2.5 tabular-nums text-fg-muted sm:table-cell">{levelForXp(u.xp)}</td>
+                  <td className="hidden px-2 py-2.5 tabular-nums text-fg-muted sm:table-cell">{u.streakDays}d</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-fg">{u.xp.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {leaders.length === 0 && <EmptyState title="No learners yet" description="Be the first on the board." />}
+        </Panel>
 
-      <LevelProgress
-        level={level}
-        levelProgress={levelProgress}
-        xp={xp}
-        xpIntoLevel={xpIntoLevel}
-        xpForLevel={xpForLevel}
-        nextXp={nextXp}
-        levelTitle={levelTitle(level)}
-      />
+        <Panel
+          title="Challenges"
+          action={<ButtonLink variant="ghost" href="/dashboard/challenges">All</ButtonLink>}
+        >
+          {openChallenges.length === 0 ? (
+            <EmptyState title="All caught up" description="New daily challenges start at midnight UTC." />
+          ) : (
+            <ul className="space-y-4">
+              {openChallenges.map((c) => (
+                <li key={c.id}>
+                  <div className="mb-1.5 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium text-fg">{c.name}</p>
+                      <p className="truncate text-xs text-fg-subtle">{c.description}</p>
+                    </div>
+                    <Badge tone="brand">+{c.rewardXp} XP</Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ProgressBar value={(c.current / c.goal) * 100} label={c.name} />
+                    <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
+                      {c.current}/{c.goal}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
 
-      <RecentAchievements earnedAchievements={earnedAchievements} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Panel
+          className="lg:col-span-2"
+          title="Community activity"
+          action={<ButtonLink variant="ghost" href="/dashboard/community">View all</ButtonLink>}
+          bodyClassName="p-0"
+        >
+          {feed.length === 0 ? (
+            <EmptyState title="It's quiet here" description="Signs other learners master will show up here." />
+          ) : (
+            <ul>
+              {feed.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 border-b border-line px-4 py-2.5 text-[13px] last:border-0">
+                  <Avatar name={displayName(a.user)} avatarId={a.user.avatarId} />
+                  <span className="min-w-0 flex-1 truncate text-fg-muted">
+                    <span className="text-fg">{displayName(a.user)}</span> signed{" "}
+                    <span className="font-medium text-fg">“{a.signLabel}”</span> at {Math.round(a.confidence * 100)}%
+                  </span>
+                  {a.user.isDemo && <DemoBadge />}
+                  <span className="shrink-0 text-xs text-fg-subtle">{timeAgo(a.createdAt, nowMs)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
 
-      <LeaderboardPreview
-        topUsers={topUsers}
-        dbUserId={dbUser?.id}
-        clerkUserImageUrl={clerkUser?.imageUrl}
-        dbUserName={dbUser?.name}
-        userRank={userRank}
-        xp={xp}
-      />
-
-      <RecentActivity recentActivity={recentActivity} />
-
-      <CommunityHighlights communityFeed={communityFeed as any} />
-
-      <div className="h-8" />
-    </div>
+        <Panel title="Recent achievements" action={<ButtonLink variant="ghost" href="/dashboard/achievements">All</ButtonLink>}>
+          {recentUnlocks.length === 0 ? (
+            <EmptyState icon={<Award />} title="None yet" description="Master your first sign to earn “First Step”." />
+          ) : (
+            <ul className="space-y-3">
+              {recentUnlocks.map((u) => (
+                <li key={u.id} className="flex items-center gap-3">
+                  <span
+                    className="grid size-8 shrink-0 place-items-center rounded-lg text-base"
+                    style={{ background: `color-mix(in oklab, ${u.achievement.color} 14%, transparent)` }}
+                    aria-hidden
+                  >
+                    {u.achievement.icon}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-fg">{u.achievement.name}</p>
+                    <p className="truncate text-xs text-fg-subtle">{u.unlockedAt ? timeAgo(u.unlockedAt, nowMs) : ""}</p>
+                  </div>
+                  <span className="text-xs tabular-nums text-fg-subtle">+{u.achievement.xpReward}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </PageBody>
   );
 }

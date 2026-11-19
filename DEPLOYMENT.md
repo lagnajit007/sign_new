@@ -1,103 +1,99 @@
-# Deployment Guide
+# Deployment guide (free tier)
 
-Deploying **Sanjog** involves two services:
-- **Frontend** (Next.js) → **Vercel**
-- **Backend** (Flask) → **Railway**
+Sanjog runs on four free services:
 
----
+| Piece | Service | Notes |
+| --- | --- | --- |
+| Web app (Next.js) | **Vercel** Hobby | `vercel-build` runs `prisma migrate deploy` before `next build` |
+| Database | **Supabase** Free | Pauses after ~7 days without traffic; resume it from the dashboard |
+| Auth | **Clerk** Free | Webhook keeps the `User` table in sync |
+| Recognition API (Flask) | **Hugging Face Spaces** (Docker, free CPU) | Sleeps when idle; the lesson screen shows a "waking up" banner |
 
-## 1. Prerequisites
-
-| Service | Account Needed |
-|---------|----------------|
-| Clerk   | [clerk.com](https://dashboard.clerk.com) — API keys |
-| Supabase | [supabase.com](https://supabase.com) — Postgres connection strings |
-| Vercel  | [vercel.com](https://vercel.com) — frontend hosting |
-| Railway | [railway.app](https://railway.app) — backend hosting |
+How a lesson works: the browser tracks the hand with TF.js and normalises 21 landmarks into 42 numbers, then calls the Space's `/predict`. The Space returns an HMAC-signed prediction. The browser forwards it to `/api/attempts`, which checks the signature, then saves the attempt and awards XP. Video never leaves the browser.
 
 ---
 
-## 2. Environment Variables
+## 1. Supabase
 
-### Frontend (Vercel)
-
-Set these in **Vercel Dashboard → Your Project → Settings → Environment Variables**:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key |
-| `CLERK_SECRET_KEY` | Yes | Clerk secret key |
-| `DATABASE_URL` | Yes | Supabase pooler URL (port 6543, `pgbouncer=true`) |
-| `DIRECT_URL` | Yes | Supabase session URL (port 5432, for migrations) |
-| `NEXT_PUBLIC_RECOGNITION_API_URL` | No | Deployed backend URL (e.g. `https://sanjog-backend.up.railway.app`) |
-| `NEXT_PUBLIC_APP_URL` | No | Deployed frontend URL (e.g. `https://sanjog.vercel.app`) |
-
-### Backend (Railway)
-
-Set these in **Railway Dashboard → Your Project → Variables**:
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PORT` | No | `5000` | Listen port |
-| `FRONTEND_ORIGIN` | No | `http://localhost:3000` | Frontend origin for CORS (set to your Vercel URL) |
-| `RATELIMIT_PER_MINUTE` | No | `60` | Max requests per minute per IP |
-| `FLASK_DEBUG` | No | `false` | Enable debug mode (never in production) |
-| `MODEL_PATH` | No | `models/model.p` | Path to the trained model file |
-
----
-
-## 3. Deploy the Frontend (Vercel)
+1. Create a project at supabase.com (Free plan) and choose a region close to your users.
+2. Go to **Connect → ORMs → Prisma** and copy:
+   - `DATABASE_URL`: the transaction pooler, port **6543**. Append `?pgbouncer=true&connection_limit=5&pool_timeout=20`.
+   - `DIRECT_URL`: the session pooler, port **5432**.
+3. Put both in `.env.local`, then run:
 
 ```bash
-# Install CLI
-npm i -g vercel
-
-# Deploy
-vercel --prod
+npx prisma migrate deploy
 ```
 
-Or connect your GitHub repo in the Vercel dashboard. The framework is auto-detected as Next.js.
-
-**Build command:** `npm run build`  
-**Output directory:** `.next`
-
----
-
-## 4. Deploy the Backend (Railway)
-
-1. Push the `backend/` directory to a Git repo (or use Railway's GitHub integration).
-2. In Railway, create a new project → **Deploy from GitHub repo**.
-3. Railway auto-detects the `Dockerfile` in `backend/`.
-4. Set the environment variables listed above.
-5. The health check endpoint `GET /` is used by Railway's health check.
-
-**Start command** (from `railway.toml`):
-```
-gunicorn --workers 2 --bind 0.0.0.0:$PORT --timeout 120 --log-level info app2:app
+```bash
+npm run db:seed
 ```
 
----
+The seed creates the achievement and challenge catalogs, plus 8 **demo learners** (`isDemo = true`, labelled "Demo" in the UI). Re-run the seed any time to refresh their dates. Set `SEED_DEMO_USERS=false` to skip them, and `SHOW_DEMO_USERS=false` on Vercel to hide them.
 
-## 5. Post-Deployment Checks
+## 2. Recognition API on Hugging Face Spaces
 
-- [ ] Visit `GET /` on the backend — should return `{"status":"ok","model_loaded":true/false}`
-- [ ] Frontend loads without auth errors
-- [ ] Sign-in / sign-up flows work
-- [ ] Dashboard renders with live data from `/api/me`
-- [ ] Interactive page shows camera prompt and connects to backend
+1. Create a free account, then **New Space**: SDK **Docker**, hardware **CPU basic (free)**, name e.g. `sanjog-recognition`.
+2. Push the contents of `backend/` to the Space repo. `backend/README.md` already has the Space header (`sdk: docker`, `app_port: 7860`).
 
----
+```bash
+git clone https://huggingface.co/spaces/<user>/sanjog-recognition hf-space
+```
 
-## 6. Troubleshooting
+   Copy `backend/app.py`, `backend/Dockerfile`, `backend/requirements.txt`, `backend/README.md`, `backend/.dockerignore` and `backend/models/model.p` into it, then commit and push. The model file is under 1 MB, so Git LFS is not needed.
+3. Under **Settings → Variables and secrets**, add these secrets:
+   - `FRONTEND_ORIGIN`: `https://<your-app>.vercel.app`, plus `,http://localhost:3000` if you also develop against this Space.
+   - `RECOGNITION_SIGNING_SECRET`: a random 64-character hex string, the same value you use on Vercel.
+4. When the build finishes, open `https://<user>-sanjog-recognition.hf.space/`. It should return `{"status":"healthy","model_loaded":true}`.
 
-### CORS errors in browser console
-Ensure `FRONTEND_ORIGIN` on the backend matches the exact origin of your Vercel deployment (including protocol, no trailing slash).
+## 3. Clerk
 
-### Model not loading on Railway
-The model file (`model.p`) must be included in your Docker image. Add it to the `backend/` directory before building, or mount it as a volume.
+1. Create an application and copy the publishable and secret keys.
+2. Under **Webhooks → Add endpoint**, set the URL to `https://<your-app>.vercel.app/api/webhooks/clerk` and subscribe to `user.created`, `user.updated` and `user.deleted`. Copy the signing secret.
+3. Before real launch, switch to a **production** Clerk instance. Production keys start with `pk_live_` / `sk_live_` and need your own domain.
 
-### Build fails due to missing env vars
-During build, some server-side env vars (`DATABASE_URL`, `CLERK_SECRET_KEY`) must be present in Vercel. Add them before building.
+## 4. Vercel
 
-### Clerk redirect loop
-Verify `NEXT_PUBLIC_APP_URL` matches the deployed Vercel domain exactly.
+Import the repo and set these environment variables (see `.env.example`):
+
+| Variable | Value |
+| --- | --- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | From Clerk |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | From the Clerk webhook |
+| `DATABASE_URL`, `DIRECT_URL` | From Supabase |
+| `NEXT_PUBLIC_APP_URL` | `https://<your-app>.vercel.app` |
+| `NEXT_PUBLIC_RECOGNITION_API_URL` | `https://<user>-sanjog-recognition.hf.space` |
+| `RECOGNITION_SIGNING_SECRET` | Same value as the Space secret |
+| `SANJOG_SCORING_ENABLED` | `true` |
+| `SHOW_DEMO_USERS` | `true` (switch to `false` once you have real users) |
+
+`NEXT_PUBLIC_RECOGNITION_API_URL` is read at **build time**: it is baked into the client and the CSP. Redeploy after changing it.
+
+## 5. Smoke test after deploy
+
+- `/` loads signed out, and `/dashboard` redirects to sign-in.
+- Sign up. Your row appears in Supabase `User` (webhook), with a `UserSettings` row.
+- Open **Practice**, allow the camera, and confirm there are no CSP errors in the console. The "waking up" banner clears within about a minute.
+- Sign a letter. The attempt is saved, XP increases, and you appear on the leaderboard next to the Demo learners.
+
+## Local development
+
+```bash
+cp .env.example .env.local
+```
+
+```bash
+npm install && npm run dev
+```
+
+In a second terminal, run the recognition API on port 7860:
+
+```bash
+cd backend && python -m venv venv && venv/Scripts/pip install -r requirements.txt && venv/Scripts/python app.py
+```
+
+To run the tests:
+
+```bash
+npm run typecheck && npm run lint && npm run test:backend
+```

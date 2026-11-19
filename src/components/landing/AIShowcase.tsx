@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import Image from "next/image"
+import RecognitionDemo from "./RecognitionDemo"
 import { useScrollReveal } from "@/lib/animations"
 import { CheckCircle, Zap, Target, BarChart3, Award } from "lucide-react"
 
@@ -23,54 +23,14 @@ export default function AIShowcase() {
             See AI Recognition In Action
           </h2>
           <p className="text-lg text-ink-soft">
-            Real-time gesture detection powered by TensorFlow computer vision. Every movement analyzed in milliseconds.
+            Your browser tracks 21 points on your hand and the model tells you which sign it sees, with a confidence score, in well under a second.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-5 gap-8 items-start" data-reveal-child>
           <div className="lg:col-span-3 relative">
             <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-brand-soft bg-gray-900 aspect-video">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-full h-full bg-gradient-to-br from-gray-900 to-gray-800">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-brand/20 border-2 border-brand/30 flex items-center justify-center animate-pulse">
-                        <Image
-                          src="/S-logo.svg"
-                          alt="Camera feed placeholder"
-                          width={40}
-                          height={40}
-                          className="opacity-60"
-                        />
-                      </div>
-                      <p className="text-white/40 text-sm">Camera feed placeholder</p>
-                    </div>
-                  </div>
-
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex items-center gap-3 bg-black/50 backdrop-blur-sm rounded-xl px-4 py-3">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-white/70 text-xs font-medium">Recognition Confidence</span>
-                          <span className="text-success text-xs font-bold">92%</span>
-                        </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-success rounded-full" style={{ width: "92%" }} />
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white text-xs font-medium">Sign: A</div>
-                        <div className="text-success text-xs">Correct ✓</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5">
-                    <span className="text-white/70 text-xs">LIVE</span>
-                    <span className="w-2 h-2 bg-red-500 rounded-full inline-block ml-2 animate-pulse" />
-                  </div>
-                </div>
-              </div>
+              <RecognitionDemo />
             </div>
           </div>
 

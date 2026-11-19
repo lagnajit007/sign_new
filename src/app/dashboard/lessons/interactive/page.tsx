@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import Link from "next/link";
-import Head from "next/head";
-import { ArrowLeft, Maximize2, Minimize2, Camera, CameraOff, RefreshCw, Play } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, CameraOff, RefreshCw, Play } from "lucide-react";
 import Button from "@/components/Button";
 import * as tf from "@tensorflow/tfjs";
 import * as handpose from "@tensorflow-models/handpose";
@@ -21,83 +19,78 @@ import {
   LevelUpCelebration,
 } from "@/components/loaders/ProcessLoaders";
 
-import { HandTrackingAPIClient } from "@/utils/HandTrackingAPIClient";
+import { HandTrackingAPIClient, type BackendStatus, type SignedPrediction } from "@/utils/HandTrackingAPIClient";
 import { RECOGNITION_API_URL } from "@/lib/config";
+import { SCORING_UNAVAILABLE_BANNER } from "@/lib/scoring-policy";
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
+// ─── Constants ───
 const BACKEND_URL = RECOGNITION_API_URL;
-const apiClient = new HandTrackingAPIClient(BACKEND_URL);
+const apiClient = BACKEND_URL ? new HandTrackingAPIClient(BACKEND_URL) : null;
 
 const ALPHABET_LESSONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const NUMBER_LESSONS = "0123456789".split("");
 
 const RECOGNITION_CONFIDENCE_THRESHOLD = 0.7;
 const CONSECUTIVE_MATCHES_NEEDED = 3;
-const DETECTION_INTERVAL = 75;
+// Hand detection runs locally on each tick; the backend is only called when a
+// hand is visible and no request is in flight (see HandTrackingAPIClient).
+const DETECTION_INTERVAL = 200;
 
 const BACKEND_ERROR_MESSAGE =
-  "We're having trouble connecting to the recognition service. The service may be offline. Please try again later.";
-const BACKEND_ERROR_TITLE = "Recognition Service Offline";
-const BACKEND_MODEL_ERROR_MESSAGE = "The recognition model is not available on the server. Please contact support.";
+  "We can't reach the recognition service right now. Please try again in a minute.";
+const BACKEND_WAKING_MESSAGE =
+  "Waking up the recognizer. The free server sleeps when idle, so this can take up to a minute.";
 
-// ─── Utility functions ─────────────────────────────────────────────────────────
+// ─── Utility functions ───
 const generateSVG = (text: string) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img" aria-label="Sign for ${text}"><rect width="100%" height="100%" fill="#FAF7FF" /><text x="50%" y="50%" font-family="Arial" font-size="120" font-weight="bold" fill="#7D54FF" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 };
 
-const preprocessLandmarks = (landmarks: number[][]): number[] => {
-  if (!landmarks || landmarks.length !== 21) return [];
-  let minX = Number.MAX_VALUE;
-  let minY = Number.MAX_VALUE;
-  landmarks.forEach((l) => {
-    minX = Math.min(minX, l[0]);
-    minY = Math.min(minY, l[1]);
-  });
-  return landmarks.flatMap((l) => [l[0] - minX, l[1] - minY]);
+/**
+ * Match the training pipeline (MediaPipe): coordinates are normalised to the
+ * frame (0..1), then the hand's minimum x/y is subtracted. handpose returns
+ * pixel coordinates, so divide by the video's intrinsic size first.
+ */
+const preprocessLandmarks = (landmarks: number[][], width: number, height: number): number[] => {
+  if (!landmarks || landmarks.length !== 21 || !width || !height) return [];
+  const xs = landmarks.map((l) => l[0] / width);
+  const ys = landmarks.map((l) => l[1] / height);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  return xs.flatMap((x, i) => [x - minX, ys[i] - minY]);
 };
 
-const checkBackend = async (): Promise<boolean> => {
-  try {
-    const res = await fetch(BACKEND_URL, { method: "GET", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(3000) });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return data.model_loaded === true;
-  } catch {
-    return false;
-  }
-};
-
-const devLog = process.env.NODE_ENV !== "production" ? console.log.bind(console, "[lesson]") : () => {};
 const devErr = process.env.NODE_ENV !== "production" ? console.error.bind(console, "[lesson]") : () => {};
 
-// ─── Page Component ────────────────────────────────────────────────────────────
+//  Page Component 
 export default function InteractiveLessonPage() {
-  // ── Camera state ──
+  //  Camera state 
   const [cameraState, setCameraState] = useState<CameraState>("off");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [needsManualPlay, setNeedsManualPlay] = useState(false);
 
-  // ── Model state ──
+  //  Model state 
   const [modelLoaded, setModelLoaded] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
-  const [backendConnected, setBackendConnected] = useState<boolean | null>(null);
+  const [backendStatus, setBackendStatus] = useState<BackendStatus | null>(null);
+  const backendConnected = backendStatus === "online";
+  const [scoringDisabled, setScoringDisabled] = useState(false);
 
-  // ── Lesson state ──
+  //  Lesson state 
   const [lessonType, setLessonType] = useState<"alphabet" | "number">("alphabet");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [targetSign, setTargetSign] = useState("A");
   const [progress, setProgress] = useState(0);
   const [lessonStatus, setLessonStatus] = useState<"idle" | "practicing" | "complete">("idle");
 
-  // ── Recognition state ──
-  const [predictionResult, setPredictionResult] = useState<{ prediction: string; confidence: number } | null>(null);
-  const [predictionError, setPredictionError] = useState<string | null>(null);
+  //  Recognition state 
+  const [predictionResult, setPredictionResult] = useState<SignedPrediction | null>(null);
   const [consecutiveMatches, setConsecutiveMatches] = useState(0);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>("idle");
   const [feedbackMessage, setFeedbackMessage] = useState("Enable your camera and start practicing to receive feedback");
 
-  // ── Stats state ──
+  //  Stats state 
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [sessionXp, setSessionXp] = useState(0);
@@ -105,7 +98,7 @@ export default function InteractiveLessonPage() {
   const [xpToast, setXpToast] = useState<{ xp: number; achievements: string[] } | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
 
-  // ── Refs ──
+  //  Refs 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -114,10 +107,12 @@ export default function InteractiveLessonPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const recordedSignRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
+  const backendStatusRef = useRef<BackendStatus | null>(null);
+  backendStatusRef.current = backendStatus;
 
   const currentLessons = lessonType === "alphabet" ? ALPHABET_LESSONS : NUMBER_LESSONS;
 
-  // ── Load TF model ──
+  //  Load TF model 
   useEffect(() => {
     isMountedRef.current = true;
     let cancelled = false;
@@ -154,20 +149,36 @@ export default function InteractiveLessonPage() {
     return () => { cancelled = true; isMountedRef.current = false; };
   }, []);
 
-  // ── Backend check ──
+  //  Lesson deep link (?set=alphabet|number&sign=A)
   useEffect(() => {
-    const check = async () => {
-      const ok = await checkBackend();
-      console.log(`[lesson] Backend health check: ${ok ? "OK" : "FAIL"} — URL: ${BACKEND_URL}`);
-      if (!ok) console.warn(`[lesson] Backend unreachable or model not loaded at ${BACKEND_URL}. Check that:\n  1. NEXT_PUBLIC_RECOGNITION_API_URL is set correctly on Vercel\n  2. The ML model file (model.p) is deployed on Railway\n  3. Railway service is running`);
-      if (isMountedRef.current) setBackendConnected(ok);
-    };
-    check();
-    const interval = setInterval(check, 30000);
-    return () => clearInterval(interval);
+    const params = new URLSearchParams(window.location.search);
+    const set = params.get("set") === "number" ? "number" : "alphabet";
+    const lessons = set === "alphabet" ? ALPHABET_LESSONS : NUMBER_LESSONS;
+    const idx = lessons.indexOf((params.get("sign") ?? "").toUpperCase());
+    setLessonType(set);
+    setCurrentIndex(idx >= 0 ? idx : 0);
   }, []);
 
-  // ── Camera: Start ──
+  //  Backend health: poll quickly while the free host wakes up, slowly once online
+  const checkBackend = useCallback(async () => {
+    if (!apiClient) { setBackendStatus("offline"); return; }
+    const status = await apiClient.checkStatus();
+    if (isMountedRef.current) setBackendStatus(status);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const loop = async () => {
+      await checkBackend();
+      if (cancelled) return;
+      timer = setTimeout(loop, backendStatusRef.current === "online" ? 60000 : 5000);
+    };
+    loop();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [checkBackend]);
+
+  //  Camera: Start 
   const startCamera = useCallback(async () => {
     if (!isMountedRef.current) return;
 
@@ -264,15 +275,18 @@ export default function InteractiveLessonPage() {
         setCameraState("active");
         setCameraError(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!isMountedRef.current) return;
 
-      const msg = err.message || "";
+      // getUserMedia rejects with a DOMException; its `name` is stable across
+      // browsers while `message` is not.
+      const name = (err as DOMException)?.name ?? "";
+      const msg = (err as Error)?.message ?? "";
       if (msg === "MANUAL_PLAY_NEEDED") return;
 
-      if (msg === "NotAllowedError" || msg.includes("PermissionDenied") || msg.includes("Permission denied")) {
+      if (name === "NotAllowedError" || name === "SecurityError") {
         setCameraState("denied");
-      } else if (msg === "NotFoundError" || msg.includes("DevicesNotFound") || msg.includes("CAMERA_API_UNAVAILABLE")) {
+      } else if (name === "NotFoundError" || name === "OverconstrainedError" || msg === "CAMERA_API_UNAVAILABLE") {
         setCameraState("error");
         setCameraError("No camera found. Please connect a camera and try again.");
       } else if (msg === "NOT_SECURE_CONTEXT") {
@@ -287,26 +301,25 @@ export default function InteractiveLessonPage() {
     }
   }, [modelLoaded]);
 
-  // ── Camera: Stop ──
+  //  Camera: Stop 
   const stopCamera = useCallback(() => {
     cleanupStream();
     if (isMountedRef.current) {
       setCameraState("stopped");
       setLessonStatus("idle");
       setPredictionResult(null);
-      setPredictionError(null);
       setFeedbackType("idle");
       setFeedbackMessage("Camera stopped. Start the camera to continue practicing.");
     }
   }, []);
 
-  // ── Camera: Restart ──
+  //  Camera: Restart 
   const restartCamera = useCallback(() => {
     stopCamera();
     setTimeout(() => startCamera(), 300);
   }, [stopCamera, startCamera]);
 
-  // ── Stream cleanup ──
+  //  Stream cleanup 
   const cleanupStream = () => {
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
@@ -329,10 +342,11 @@ export default function InteractiveLessonPage() {
     };
   }, []);
 
-  // ── Record attempt ──
+  //  Record attempt 
   const recordAttempt = useCallback(async (attempt: {
     signLabel: string; lessonType: "alphabet" | "number";
     predictedLabel: string; confidence: number; correct: boolean;
+    issuedAt: number; nonce: string; signature: string | null;
   }) => {
     try {
       const res = await fetch("/api/attempts", {
@@ -342,6 +356,7 @@ export default function InteractiveLessonPage() {
       });
       if (!res.ok) return;
       const data = await res.json();
+      if (data.scoringEnabled === false) setScoringDisabled(true);
       if (data.xpGained > 0 || (data.unlockedAchievements?.length ?? 0) > 0) {
         setSessionXp((p) => p + (data.xpGained || 0));
         setXpToast({ xp: data.xpGained, achievements: (data.unlockedAchievements ?? []).map((a: { name: string }) => a.name) });
@@ -353,7 +368,7 @@ export default function InteractiveLessonPage() {
     } catch { /* fire-and-forget */ }
   }, []);
 
-  // ── Manual play handler ──
+  //  Manual play handler 
   const handleManualPlay = useCallback(() => {
     if (!videoRef.current || !streamRef.current) return;
     videoRef.current.play().then(() => {
@@ -363,7 +378,7 @@ export default function InteractiveLessonPage() {
     });
   }, []);
 
-  // ── Detection loop ──
+  //  Detection loop 
   useEffect(() => {
     if (cameraState !== "active" || lessonStatus !== "practicing" || !modelRef.current || !videoRef.current) return;
 
@@ -390,21 +405,24 @@ export default function InteractiveLessonPage() {
           lastLandmarks = rawLandmarks;
 
           try {
-            const processed = preprocessLandmarks(rawLandmarks);
+            const video = videoRef.current;
+            const processed = preprocessLandmarks(rawLandmarks, video.videoWidth, video.videoHeight);
             if (processed.length === 0) return;
 
-            if (!backendConnected) {
-              setPredictionError("Recognition service offline");
+            if (!BACKEND_URL || !apiClient) {
               setFeedbackType("error");
-              setFeedbackMessage(BACKEND_ERROR_MESSAGE);
+              setFeedbackMessage("Recognition service is not configured for this environment. Please contact support.");
               return;
             }
-
-            const result = await apiClient.predictGesture(processed);
-            if (!active) return;
+            if (!backendConnected) {
+              setFeedbackType("error");
+              setFeedbackMessage(backendStatus === "waking" ? BACKEND_WAKING_MESSAGE : BACKEND_ERROR_MESSAGE);
+              return;
+            }
+            const result = await apiClient.predict(processed);
+            if (!active || !result) return;
 
             setPredictionResult(result);
-            setPredictionError(null);
 
             const confidence = result.confidence || 0;
             const isCorrect = result.prediction === targetSign && confidence > RECOGNITION_CONFIDENCE_THRESHOLD;
@@ -425,6 +443,7 @@ export default function InteractiveLessonPage() {
                   void recordAttempt({
                     signLabel: targetSign, lessonType,
                     predictedLabel: result.prediction, confidence, correct: true,
+                    issuedAt: result.issuedAt, nonce: result.nonce, signature: result.signature,
                   });
                 }
                 setProgress((prev) => {
@@ -453,16 +472,15 @@ export default function InteractiveLessonPage() {
               }
               setProgress((prev) => Math.max(prev - 0.5, 0));
             }
-          } catch (err: any) {
-            if (err.message?.includes("Cannot connect") || err.message?.includes("Failed to fetch")) {
-              setBackendConnected(false);
+          } catch (err: unknown) {
+            if (err instanceof TypeError || (err as Error)?.name === "AbortError") {
+              setBackendStatus("offline");
               setFeedbackType("error");
               setFeedbackMessage(BACKEND_ERROR_MESSAGE);
             } else {
               setFeedbackType("error");
               setFeedbackMessage("Recognition error. Please try again.");
             }
-            setPredictionError(err.message);
           }
         } else {
           if (lastLandmarks) {
@@ -486,9 +504,9 @@ export default function InteractiveLessonPage() {
         detectionIntervalRef.current = null;
       }
     };
-  }, [cameraState, lessonStatus, modelLoaded, targetSign, currentIndex, currentLessons, backendConnected, consecutiveMatches, recordAttempt]);
+  }, [cameraState, lessonStatus, modelLoaded, targetSign, currentIndex, currentLessons, backendConnected, backendStatus, consecutiveMatches, recordAttempt, lessonType]);
 
-  // ── Hand landmark drawing ──
+  //  Hand landmark drawing 
   const drawHandLandmarks = (ctx: CanvasRenderingContext2D, landmarks: number[][]) => {
     const connections = [
       [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
@@ -521,7 +539,7 @@ export default function InteractiveLessonPage() {
     });
   };
 
-  // ── Navigation ──
+  //  Navigation 
   const goToNextSign = useCallback(() => {
     if (currentIndex < currentLessons.length - 1) {
       const next = currentIndex + 1;
@@ -550,7 +568,6 @@ export default function InteractiveLessonPage() {
     setLessonStatus("practicing");
     setProgress(0);
     setPredictionResult(null);
-    setPredictionError(null);
     setFeedbackType("idle");
     setFeedbackMessage("Position your hand in front of the camera");
   }, []);
@@ -571,7 +588,7 @@ export default function InteractiveLessonPage() {
     setSessionXp(0);
   }, [currentLessons]);
 
-  // ── Toggle lesson type ──
+  //  Toggle lesson type 
   const handleToggleType = useCallback(() => {
     const newType = lessonType === "alphabet" ? "number" : "alphabet";
     setLessonType(newType);
@@ -583,7 +600,7 @@ export default function InteractiveLessonPage() {
     if (cameraState === "active") stopCamera();
   }, [lessonType, cameraState, stopCamera]);
 
-  // ── Fullscreen ──
+  //  Fullscreen 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = () => {
     if (!document.fullscreenElement && containerRef.current) {
@@ -595,26 +612,21 @@ export default function InteractiveLessonPage() {
     }
   };
 
-  // ── Sync target sign with currentIndex ──
+  //  Sync target sign with currentIndex 
   useEffect(() => {
     setTargetSign(currentLessons[currentIndex]);
   }, [currentIndex, currentLessons]);
 
-  // ── Accuracy calculation ──
+  //  Accuracy calculation 
   const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
-  // ── Render ──
+  //  Render 
   return (
     <>
-      <Head>
-        <title>Sanjog - Interactive Sign Language Lesson</title>
-        <meta name="description" content="Practice sign language with AI-powered hand gesture recognition." />
-      </Head>
-
-      <div ref={containerRef} className="flex h-screen bg-[#FAF7FF] overflow-hidden">
+      <div ref={containerRef} className="flex h-full min-h-[640px] bg-canvas overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Navigation */}
-          <header className="bg-white px-4 lg:px-6 py-3 flex items-center justify-between border-b border-[#EAE4FF] shrink-0">
+          <header className="bg-panel px-4 lg:px-6 py-3 flex items-center justify-between border-b border-line shrink-0">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" href="/dashboard/lessons" icon={ArrowLeft}>
                 Back to Lessons
@@ -623,11 +635,11 @@ export default function InteractiveLessonPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleToggleType}
-                className="bg-[#EAE4FF] text-[#7D54FF] text-xs px-3 py-1.5 rounded-full hover:bg-[#DDD4FF] transition-colors font-medium"
+                className="bg-brand-tint text-brand text-xs px-3 py-1.5 rounded-full hover:bg-subtle transition-colors font-medium"
               >
                 {lessonType === "alphabet" ? "Switch to Numbers" : "Switch to Alphabet"}
               </button>
-              <div className="bg-[#EAE4FF] text-[#7D54FF] text-xs px-3 py-1.5 rounded-full font-medium">
+              <div className="bg-brand-tint text-brand text-xs px-3 py-1.5 rounded-full font-medium">
                 {lessonType === "alphabet" ? "Letter" : "Number"} {currentIndex + 1}/{currentLessons.length}
               </div>
               <Button
@@ -645,7 +657,7 @@ export default function InteractiveLessonPage() {
             xpToast.achievements.length > 0 ? (
               <AchievementCelebration
                 name={xpToast.achievements[0]}
-                icon="🏆"
+                icon="✨"
                 xp={xpToast.xp}
                 onDone={() => setXpToast(null)}
               />
@@ -662,20 +674,24 @@ export default function InteractiveLessonPage() {
             />
           )}
 
-          {/* Backend offline banner */}
-          {backendConnected === false && (
-            <div className="bg-orange-50 border-b border-orange-200 px-4 lg:px-6 py-2 flex items-center gap-2 shrink-0">
-              <span className="text-orange-500 text-sm">⚠</span>
-              <p className="text-sm text-orange-700">
-                {BACKEND_ERROR_TITLE}.{" "}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setBackendConnected(null); checkBackend().then(setBackendConnected); }}
-                >
-                  Retry
-                </Button>
-              </p>
+          {/* Backend status banners */}
+          {backendStatus === "waking" && (
+            <div role="status" className="bg-amber-50 border-b border-amber-200 px-4 lg:px-6 py-2 flex items-center gap-2 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" aria-hidden />
+              <p className="text-sm text-amber-800">{BACKEND_WAKING_MESSAGE}</p>
+            </div>
+          )}
+          {backendStatus === "offline" && (
+            <div role="alert" className="bg-red-50 border-b border-red-200 px-4 lg:px-6 py-2 flex items-center gap-2 shrink-0">
+              <p className="text-sm text-red-700">{BACKEND_ERROR_MESSAGE}</p>
+              <Button variant="ghost" size="sm" onClick={() => { setBackendStatus(null); void checkBackend(); }}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {scoringDisabled && (
+            <div role="status" className="bg-slate-50 border-b border-slate-200 px-4 lg:px-6 py-2 shrink-0">
+              <p className="text-sm text-slate-700">{SCORING_UNAVAILABLE_BANNER}</p>
             </div>
           )}
 
@@ -690,7 +706,7 @@ export default function InteractiveLessonPage() {
           {!isModelLoading && (
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
               {/* Left Panel - Lesson Info */}
-              <div className="w-full lg:w-1/2 border-r border-[#EAE4FF] bg-white overflow-hidden">
+              <div className="w-full lg:w-1/2 border-r border-line bg-panel overflow-hidden">
                 <LessonPanel
                   targetSign={targetSign}
                   lessonType={lessonType}
@@ -712,7 +728,7 @@ export default function InteractiveLessonPage() {
               </div>
 
               {/* Right Panel - Webcam + Feedback */}
-              <div className="w-full lg:w-1/2 bg-[#1a1a2e] flex flex-col overflow-hidden">
+              <div className="w-full lg:w-1/2 bg-zinc-950 flex flex-col overflow-hidden">
                 <div className="flex-1 p-3 lg:p-4 flex flex-col gap-3">
                   {/* Recognition Status Bar */}
                   {cameraState === "active" && lessonStatus === "practicing" && (
@@ -730,8 +746,8 @@ export default function InteractiveLessonPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         {sessionXp > 0 && (
-                          <span className="text-xs bg-[#7D54FF]/30 text-[#C4B5FF] px-3 py-1.5 rounded-full">
-                            ✨ +{sessionXp} XP
+                          <span className="text-xs bg-brand/30 text-white px-3 py-1.5 rounded-full">
+                             ✨ +{sessionXp} XP
                           </span>
                         )}
                       </div>
@@ -757,7 +773,7 @@ export default function InteractiveLessonPage() {
                         <div className="bg-black/70 rounded-lg px-3 py-2">
                           <GestureDetectionLoader
                             confidence={Math.round(predictionResult.confidence * 100)}
-                            message="Analyzing…"
+                            message="Analyzing"
                           />
                         </div>
                       </div>
@@ -782,11 +798,8 @@ export default function InteractiveLessonPage() {
                   {/* Controls */}
                   <div className="flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
-                      {cameraState === "off" || cameraState === "stopped" ? (
-                        <Button variant="primary" size="md" icon={Camera} onClick={startCamera}>
-                          Start Camera
-                        </Button>
-                      ) : (
+                      {/* The camera panel has its own Start button when the camera is off. */}
+                      {cameraState === "off" || cameraState === "stopped" ? null : (
                         <>
                           <Button variant="outline" size="sm" icon={CameraOff} onClick={stopCamera}>
                             Stop
@@ -812,7 +825,7 @@ export default function InteractiveLessonPage() {
                     <div className="flex items-center gap-2">
                       {cameraState === "active" && (
                         <span className="text-xs text-gray-400">
-                          {lessonStatus === "practicing" ? "Practicing…" : "Ready"}
+                          {lessonStatus === "practicing" ? "Practicing" : "Ready"}
                         </span>
                       )}
                     </div>
@@ -825,9 +838,9 @@ export default function InteractiveLessonPage() {
                         <span>Progress</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-2 bg-panel/10 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] rounded-full transition-all duration-300"
+                          className="h-full bg-gradient-to-r from-brand to-brand-hover rounded-full transition-all duration-300"
                           style={{ width: `${Math.round(progress)}%` }}
                         />
                       </div>

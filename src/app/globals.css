@@ -1,122 +1,129 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
+/* Legacy JS config (palette, radii, keyframes, plugins) stays loaded while
+   older screens are migrated to the token utilities below. */
+@config "../../tailwind.config.ts";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Tailwind v3 → v4 compatibility ─────────────────────────────────────────
+   v4 changed a few defaults; these keep un-migrated screens looking the same. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+}
+
+/* ── Sanjog app tokens ──────────────────────────────────────────────────────
+   Neutral surfaces with one violet accent, light and dark. Use these
+   utilities in app screens: bg-canvas, bg-panel, bg-subtle, text-fg,
+   text-fg-muted, text-fg-subtle, border-line, bg-brand, text-brand … */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-canvas: var(--sj-canvas);
+  --color-panel: var(--sj-panel);
+  --color-subtle: var(--sj-subtle);
+  --color-subtle-hover: var(--sj-subtle-hover);
+  --color-fg: var(--sj-fg);
+  --color-fg-muted: var(--sj-fg-muted);
+  --color-fg-subtle: var(--sj-fg-subtle);
+  --color-line: var(--sj-line);
+  --color-line-strong: var(--sj-line-strong);
+  --color-brand: var(--sj-brand);
+  --color-brand-hover: var(--sj-brand-hover);
+  --color-brand-fg: var(--sj-brand-fg);
+  --color-brand-tint: var(--sj-brand-tint);
+  --color-positive: var(--sj-positive);
+  --color-positive-tint: var(--sj-positive-tint);
+  --color-caution: var(--sj-caution);
+  --color-caution-tint: var(--sj-caution-tint);
+  --color-negative: var(--sj-negative);
+  --color-negative-tint: var(--sj-negative-tint);
+  --font-display: var(--font-geist), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
 :root {
-  --radius: 1.125rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sj-canvas: #ffffff;
+  --sj-panel: #ffffff;
+  --sj-subtle: #f4f4f5;
+  --sj-subtle-hover: #ececee;
+  --sj-fg: #18181b;
+  --sj-fg-muted: #52525b;
+  --sj-fg-subtle: #71717a;
+  --sj-line: #e8e8eb;
+  --sj-line-strong: #d4d4d8;
+  --sj-brand: #6d4aff;
+  --sj-brand-hover: #7c5cff;
+  --sj-brand-fg: #ffffff;
+  --sj-brand-tint: color-mix(in oklab, #6d4aff 10%, transparent);
+  --sj-positive: #15803d;
+  --sj-positive-tint: color-mix(in oklab, #16a34a 12%, transparent);
+  --sj-caution: #b45309;
+  --sj-caution-tint: color-mix(in oklab, #d97706 13%, transparent);
+  --sj-negative: #dc2626;
+  --sj-negative-tint: color-mix(in oklab, #dc2626 11%, transparent);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --sj-canvas: #111113;
+  --sj-panel: #161618;
+  --sj-subtle: #222225;
+  --sj-subtle-hover: #2a2a2e;
+  --sj-fg: #f4f4f5;
+  --sj-fg-muted: #a1a1aa;
+  --sj-fg-subtle: #8a8a93;
+  --sj-line: #26262a;
+  --sj-line-strong: #3a3a40;
+  --sj-brand: #9b85ff;
+  --sj-brand-hover: #ad9bff;
+  --sj-brand-fg: #120a33;
+  --sj-brand-tint: color-mix(in oklab, #9b85ff 16%, transparent);
+  --sj-positive: #4ade80;
+  --sj-positive-tint: color-mix(in oklab, #4ade80 14%, transparent);
+  --sj-caution: #fbbf24;
+  --sj-caution-tint: color-mix(in oklab, #fbbf24 14%, transparent);
+  --sj-negative: #f87171;
+  --sj-negative-tint: color-mix(in oklab, #f87171 14%, transparent);
+}
+
+/* Violet accent for the ObsidianUI dashboard shell (menus render in a portal,
+   so the layer class carries the same palette). */
+.obsidian-dashboard-shell,
+.obsidian-dashboard-shell-layer {
+  --obsidian-dashboard-shell-accent: #6d4aff;
+  --obsidian-dashboard-shell-accent-hover: #7c5cff;
+  --obsidian-dashboard-shell-accent-shadow: 0 2px 4px rgb(109 74 255 / 0.24), 0 0 0 1px #5a37f0, inset 0 4px 6px rgb(255 255 255 / 0.2),
+    inset 0 0 0 1px rgb(255 255 255 / 0.15), inset 0 -8px 14px rgb(0 0 0 / 0.15);
+}
+.dark .obsidian-dashboard-shell,
+.dark .obsidian-dashboard-shell-layer {
+  --obsidian-dashboard-shell-background: #111113;
+  --obsidian-dashboard-shell-accent: #7c5cff;
+  --obsidian-dashboard-shell-accent-hover: #9b85ff;
+}
+
+/* User font-size setting (Settings → Accessibility). */
+html[data-font-scale] {
+  font-size: calc(16px * var(--sj-font-scale, 1));
 }
 
 @layer base {
   /* Exclude video elements from global border and outline to prevent interference */
   *:not(video) {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
@@ -192,38 +199,20 @@
     /* transform: scaleX(-1); */
   }
 
-  /* Debug border to verify video rendering in development */
-  [data-env="development"] .camera-container video {
-    border: 2px solid red; /* Visible border to confirm video element presence */
-  }
 }
 
-/* Smooth transitions for interactive elements */
-a, button, input, select, .transition-all {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Smoother hover effects on buttons and links */
-button:hover, a:hover, [role="button"]:hover {
-  transition: all 0.15s ease;
-}
 
 /* Smooth transition for page navigation */
 body {
   overflow-x: hidden;
 }
 
-/* Enhanced focus states */
+/* Keyboard focus */
 :focus-visible {
-  outline: 2px solid #7D54FF;
+  outline: 2px solid var(--sj-brand);
   outline-offset: 2px;
-  transition: outline-offset 0.15s ease;
 }
 
-/* Smooth image transitions */
-img {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
 
 /* Smoother scrolling behavior */
 html {

@@ -40,15 +40,15 @@ export default function LessonPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <BookOpen className="w-4 h-4 text-[#7D54FF]" />
-              <span className="text-xs font-medium text-[#7D54FF] uppercase tracking-wider">
+              <BookOpen className="w-4 h-4 text-brand" />
+              <span className="text-xs font-medium text-brand uppercase tracking-wider">
                 {lessonType === 'alphabet' ? 'Alphabet' : 'Number'} Lesson
               </span>
             </div>
-            <h1 className="text-3xl lg:text-4xl font-black text-[#2D1B69]">
-              Sign for <span className="text-[#7D54FF]">"{targetSign}"</span>
+            <h1 className="text-3xl lg:text-4xl font-black text-fg">
+              Sign for <span className="text-brand">"{targetSign}"</span>
             </h1>
-            <p className="text-sm text-[#7E7A93] mt-1">{description}</p>
+            <p className="text-sm text-fg-subtle mt-1">{description}</p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <Button
@@ -59,7 +59,7 @@ export default function LessonPanel({
               disabled={currentIndex === 0}
               aria-label="Previous sign"
             />
-            <span className="text-xs font-medium text-[#7E7A93] px-2">
+            <span className="text-xs font-medium text-fg-subtle px-2">
               {currentIndex + 1}/{totalLessons}
             </span>
             <Button
@@ -74,7 +74,7 @@ export default function LessonPanel({
         </div>
 
         {/* Sign Visualization */}
-        <div className="bg-[#FAF7FF] rounded-2xl p-4 flex items-center justify-center">
+        <div className="bg-canvas rounded-2xl p-4 flex items-center justify-center">
           <motion.img
             key={targetSign}
             initial={{ opacity: 0, scale: 0.9 }}
@@ -87,15 +87,15 @@ export default function LessonPanel({
         </div>
 
         {/* Learning Tips */}
-        <div className="bg-[#FFFDF5] border border-[#FFEAA7] rounded-xl p-4">
+        <div className="bg-caution-tint border border-line rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Lightbulb className="w-4 h-4 text-[#FFC83D]" />
-            <h3 className="font-semibold text-sm text-[#2D1B69]">Learning Tips</h3>
+            <Lightbulb className="w-4 h-4 text-caution" />
+            <h3 className="font-semibold text-sm text-fg">Learning Tips</h3>
           </div>
           <ul className="space-y-1.5">
             {tips.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-[#7E7A93]">
-                <span className="text-[#FFC83D] mt-0.5">•</span>
+              <li key={i} className="flex items-start gap-2 text-sm text-fg-subtle">
+                <span className="text-caution mt-0.5">•</span>
                 <span>{tip}</span>
               </li>
             ))}
@@ -105,12 +105,12 @@ export default function LessonPanel({
         {/* Progress Section */}
         <div>
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="font-medium text-[#2D1B69]">Lesson Progress</span>
-            <span className="text-[#7D54FF] font-bold">{Math.round(progress)}%</span>
+            <span className="font-medium text-fg">Lesson Progress</span>
+            <span className="text-brand font-bold">{Math.round(progress)}%</span>
           </div>
-          <div className="h-3 bg-[#EAE4FF] rounded-full overflow-hidden">
+          <div className="h-3 bg-brand-tint rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] rounded-full"
+              className="h-full bg-gradient-to-r from-brand to-brand-hover rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${Math.round(progress)}%` }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -124,10 +124,10 @@ export default function LessonPanel({
                 <div key={i} className="flex flex-col items-center">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      isReached ? 'bg-[#7D54FF]' : 'bg-[#EAE4FF]'
+                      isReached ? 'bg-brand' : 'bg-brand-tint'
                     }`}
                   />
-                  <span className="text-[10px] text-[#7E7A93] mt-0.5">{milestone}</span>
+                  <span className="text-[10px] text-fg-subtle mt-0.5">{milestone}</span>
                 </div>
               );
             })}
@@ -135,8 +135,8 @@ export default function LessonPanel({
         </div>
 
         {/* Lesson info footer */}
-        <div className="flex items-center gap-3 text-xs text-[#7E7A93] pt-2 border-t border-[#EAE4FF]">
-          <span className="bg-[#EAE4FF] text-[#7D54FF] px-2.5 py-1 rounded-full font-medium">
+        <div className="flex items-center gap-3 text-xs text-fg-subtle pt-2 border-t border-line">
+          <span className="bg-brand-tint text-brand px-2.5 py-1 rounded-full font-medium">
             {difficulty}
           </span>
           <span>{label} {currentIndex + 1} of {totalLessons}</span>

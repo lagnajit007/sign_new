@@ -3,6 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { SignedOut, SignedIn, SignInButton, SignUpButton } from "@clerk/nextjs"
+import { Button } from "@/components/arc/button/button"
 
 const footerLinks = {
   learn: [
@@ -14,7 +15,6 @@ const footerLinks = {
   company: [
     { label: "About Us", href: "/about" },
     { label: "Our Story", href: "/#story" },
-    { label: "Meet the Team", href: "/#team" },
     { label: "FAQ", href: "/#faq" },
   ],
   legal: [
@@ -67,12 +67,12 @@ export default function Footer() {
               <SignedOut>
                 <li>
                   <SignInButton mode="redirect">
-                    <button className="text-sm text-ink-soft hover:text-brand transition-colors">Sign In</button>
+                    <Button variant="ghost" size="sm">Sign In</Button>
                   </SignInButton>
                 </li>
                 <li>
                   <SignUpButton mode="redirect">
-                    <button className="text-sm text-ink-soft hover:text-brand transition-colors">Sign Up</button>
+                    <Button variant="ghost" size="sm">Sign Up</Button>
                   </SignUpButton>
                 </li>
               </SignedOut>

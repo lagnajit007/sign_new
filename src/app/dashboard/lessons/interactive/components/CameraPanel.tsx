@@ -1,9 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useCallback, useState } from 'react';
 import { Camera, CameraOff, RefreshCw, Play, AlertTriangle, ShieldAlert } from 'lucide-react';
 import Button from '@/components/Button';
-import { CameraInitLoader, ButtonLoader } from '@/components/loaders/ProcessLoaders';
+import { CameraInitLoader } from '@/components/loaders/ProcessLoaders';
 
 export type CameraState = 'off' | 'requesting' | 'active' | 'stopped' | 'denied' | 'error';
 
@@ -29,12 +28,11 @@ export default function CameraPanel({
   videoRef,
   canvasRef,
   onStart,
-  onStop,
   onRestart,
   onManualPlay,
   children,
 }: CameraPanelProps) {
-  const { renderState, icon, title, message } = getStateDisplay(cameraState, cameraError, isModelLoading);
+  getStateDisplay(cameraState);
 
   return (
     <div className="relative bg-black rounded-xl overflow-hidden flex-1" style={{ minHeight: '320px', aspectRatio: '4/3' }}>
@@ -76,10 +74,10 @@ export default function CameraPanel({
 
       {/* Camera off / idle state */}
       {cameraState === 'off' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a1a2e] text-white p-6">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-white p-6">
           <div className="relative mb-6">
-            <div className="w-24 h-24 rounded-full bg-[#7D54FF]/10 border-2 border-dashed border-[#7D54FF]/30 flex items-center justify-center">
-              <Camera className="w-10 h-10 text-[#7D54FF]/60" />
+            <div className="w-24 h-24 rounded-full bg-brand/10 border-2 border-dashed border-brand/30 flex items-center justify-center">
+              <Camera className="w-10 h-10 text-brand/60" />
             </div>
           </div>
           <p className="text-xl font-bold mb-2">Camera Off</p>
@@ -165,24 +163,22 @@ function ManualPlayButton({ onClick }: { onClick: () => void }) {
 }
 
 function getStateDisplay(
-  state: CameraState,
-  error: string | null,
-  modelLoading: boolean
-): { renderState: string; icon: string; title: string; message: string } {
+  state: CameraState
+): { title: string } {
   switch (state) {
     case 'off':
-      return { renderState: 'idle', icon: 'camera', title: 'Camera Off', message: '' };
+      return { title: 'Camera Off' };
     case 'requesting':
-      return { renderState: 'loading', icon: 'loading', title: 'Requesting…', message: '' };
+      return { title: 'Requesting…' };
     case 'active':
-      return { renderState: 'active', icon: 'active', title: 'Camera Active', message: '' };
+      return { title: 'Camera Active' };
     case 'stopped':
-      return { renderState: 'stopped', icon: 'stopped', title: 'Camera Stopped', message: '' };
+      return { title: 'Camera Stopped' };
     case 'denied':
-      return { renderState: 'denied', icon: 'denied', title: 'Permission Denied', message: '' };
+      return { title: 'Permission Denied' };
     case 'error':
-      return { renderState: 'error', icon: 'error', title: 'Camera Error', message: error || '' };
+      return { title: 'Camera Error' };
     default:
-      return { renderState: 'idle', icon: 'camera', title: 'Camera Off', message: '' };
+      return { title: 'Camera Off' };
   }
 }

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { SignedOut, SignedIn, SignUpButton } from "@clerk/nextjs"
 import { ArrowRight, Sparkles } from "lucide-react"
+import { Button } from "@/components/arc/button/button"
 
 export default function FinalCTA() {
   return (
@@ -21,16 +22,16 @@ export default function FinalCTA() {
         </h2>
 
         <p className="text-white/80 text-lg mb-10 max-w-xl mx-auto">
-          Join thousands of learners. No credit card required. Start learning sign language with AI-powered feedback.
+          Free to use, no credit card required. Learn the sign language alphabet and numbers with live feedback from your webcam.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <SignedOut>
             <SignUpButton mode="redirect">
-              <button className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-brand rounded-full text-base font-bold hover:bg-white/90 transition-all hover:scale-[1.03] active:scale-[0.98] shadow-lg">
+              <Button variant="secondary" size="lg">
                 Start Learning Free
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </Button>
             </SignUpButton>
           </SignedOut>
           <SignedIn>
@@ -46,7 +47,7 @@ export default function FinalCTA() {
             href="/about"
             className="inline-flex items-center gap-2 px-8 py-3.5 border-2 border-white/30 text-white rounded-full text-base font-medium hover:bg-white/10 transition-all"
           >
-            Learn More
+            Read Our Accessibility Commitment
           </Link>
         </div>
 

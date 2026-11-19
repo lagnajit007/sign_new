@@ -1,29 +1,34 @@
 """
 Sanjog — Sign Language Recognition Backend
+
 Flask server exposing:
-  GET  /           → health check
-  POST /predict    → landmark → sign prediction
-  GET  /gestures   → list all supported gestures
-  GET  /stats      → server statistics
+  GET  /           — health check (503 until the model is loaded)
+  POST /predict    — 42 normalised landmark values → signed sign prediction
+  GET  /gestures   — list all supported gestures
 
 Configuration via environment variables (see .env.example):
-  PORT                  — listen port (default 5000)
-  FLASK_DEBUG           — "true" to enable debug mode (never in production)
-  MODEL_PATH            — absolute path to model.p (default: models/model.p)
-  FRONTEND_ORIGIN       — single frontend origin for CORS (default: http://localhost:3000)
-  RATELIMIT_PER_MINUTE  — max requests per minute per IP via Flask-Limiter (default: 60)
-  REQUEST_INTERVAL      — minimum seconds between requests per process (default: 0.05)
+  PORT                        — listen port (default 7860, the Hugging Face Spaces port)
+  FLASK_DEBUG                 — "true" to enable debug mode (never in production)
+  MODEL_PATH                  — absolute path to model.p (default: models/model.p)
+  FRONTEND_ORIGIN             — comma-separated allow-list of frontend origins for CORS
+  RATELIMIT_PER_MINUTE        — max /predict requests per minute per client IP (default 900)
+  RECOGNITION_SIGNING_SECRET  — shared secret used to HMAC-sign predictions so the
+                                Next.js API can trust them when awarding XP
+  TRUSTED_PROXY_HOPS          — number of reverse proxies in front of the app (default 1)
+  SANJOG_SKIP_MODEL           — "1" to skip model loading (tests)
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
+import math
 import os
 import pickle
+import secrets
 import threading
 import time
-from collections import Counter, deque
-from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -32,12 +37,12 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-# ── Environment ───────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-# ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -45,149 +50,122 @@ logging.basicConfig(
 )
 logger = logging.getLogger("sanjog.backend")
 
-# ── Build stamp (written by Dockerfile at build time) ──
-build_stamp = Path("/build-stamp")
-if build_stamp.exists():
-    logger.info("Build stamp: %s", build_stamp.read_text().strip())
-else:
-    logger.info("Build stamp not found — running outside Railway")
 app = Flask(__name__)
+# Landmark payloads are ~1 KB; anything bigger is not a legitimate request.
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 
-# CORS: accept any origin that the frontend sends, echoing it back.
-# This avoids blocking legitimate deployments where the exact Vercel URL
-# may differ from what's configured. For stricter control, set the
-# FRONTEND_ORIGIN env var to a comma-separated allow-list of origins.
+# Hosted behind a reverse proxy (Hugging Face / Render). Trust its X-Forwarded-For
+# so rate limiting keys on the real client IP instead of the proxy's.
+_proxy_hops = int(os.environ.get("TRUSTED_PROXY_HOPS", "1"))
+if _proxy_hops > 0:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=_proxy_hops, x_proto=_proxy_hops, x_host=_proxy_hops)
+
+# ── CORS ────────────────────────────────────────────────────────────────────
+# Explicit allow-list. Recognition requests do not use cookies, so credentials
+# are disabled. CORS is not authorization; XP is protected by the HMAC below.
 FRONTEND_ORIGIN_RAW = os.environ.get("FRONTEND_ORIGIN", "")
-ALLOWED_ORIGINS = set(
-    o.strip() for o in FRONTEND_ORIGIN_RAW.split(",") if o.strip()
-)
+ALLOWED_ORIGINS = {o.strip().rstrip("/") for o in FRONTEND_ORIGIN_RAW.split(",") if o.strip()}
+if not ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS = {"http://localhost:3000"}
+    logger.warning("FRONTEND_ORIGIN is not set; allowing localhost only")
 
-def _cors_allowed(origin: str) -> bool:
-    """Return True to allow the origin (flask-cors echoes back the Origin header)."""
-    if not ALLOWED_ORIGINS or origin in ALLOWED_ORIGINS:
-        return True
-    logger.warning("CORS request from unrecognised origin: %s", origin)
-    return True  # permissive — allow anyway; set FRONTEND_ORIGIN to enforce
+CORS(app, origins=sorted(ALLOWED_ORIGINS), supports_credentials=False, always_send=False)
+logger.info("CORS allow-list: %s", sorted(ALLOWED_ORIGINS))
 
-CORS(app, origins=_cors_allowed, supports_credentials=True)
+# ── Rate limiting ───────────────────────────────────────────────────────────
+RATELIMIT_PER_MINUTE = os.environ.get("RATELIMIT_PER_MINUTE", "900")
+limiter = Limiter(key_func=get_remote_address, app=app, default_limits=[], storage_uri="memory://")
 
-if ALLOWED_ORIGINS:
-    logger.info("CORS allow-list: %s — unrecognised origins will still be accepted (permissive mode)", ALLOWED_ORIGINS)
-else:
-    logger.info("CORS: permissive mode — any origin is accepted")
+# ── Signing ─────────────────────────────────────────────────────────────────
+SIGNING_SECRET = os.environ.get("RECOGNITION_SIGNING_SECRET", "").encode()
+if not SIGNING_SECRET:
+    logger.warning("RECOGNITION_SIGNING_SECRET is not set; predictions will be unsigned and earn no XP")
 
-# ── Rate limiting (Flask-Limiter) ─────────────────────────────────────────────
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[f"{os.environ.get('RATELIMIT_PER_MINUTE', '60')} per minute"],
-    app=app,
-)
 
-# ── Model loading ─────────────────────────────────────────────────────────────
-# Priority-ordered candidate paths — first one that exists wins.
-# This handles all deployment scenarios regardless of Docker build context.
+def sign_prediction(label: str, confidence: float, issued_at: int, nonce: str) -> str | None:
+    """HMAC-SHA256 over the canonical payload. Must match src/lib/recognition-signature.ts."""
+    if not SIGNING_SECRET:
+        return None
+    payload = f"{label}|{confidence:.4f}|{issued_at}|{nonce}".encode()
+    return hmac.new(SIGNING_SECRET, payload, hashlib.sha256).hexdigest()
+
+
+# ── Model ───────────────────────────────────────────────────────────────────
 MODEL_CANDIDATES: list[Path] = [
-    Path(os.environ["MODEL_PATH"]) if "MODEL_PATH" in os.environ else None,
+    *([Path(os.environ["MODEL_PATH"])] if os.environ.get("MODEL_PATH") else []),
     BASE_DIR / "models" / "model.p",
-    BASE_DIR.parent / "backend" / "models" / "model.p",
     BASE_DIR / "model.p",
 ]
 
-SIGN_LABELS: dict[int, str] = {
-    **{i: chr(65 + i) for i in range(26)},          # A–Z → 0–25
-    **{26 + i: str(i) for i in range(10)},           # 0–9 → 26–35
-}
-
 model = None
-labels_dict: dict = {}
+classes: list[str] = []
 _model_lock = threading.Lock()
 
-MODEL_PATH: Path | None = None
-for candidate in filter(None, MODEL_CANDIDATES):
-    logger.info("Looking for model at: %s (exists=%s)", candidate, candidate.exists())
-    if candidate.exists():
-        MODEL_PATH = candidate
-        break
+if os.environ.get("SANJOG_SKIP_MODEL") != "1":
+    model_path = next((c for c in MODEL_CANDIDATES if c.exists()), None)
+    if model_path is None:
+        logger.error("Model not found; checked: %s", [str(c) for c in MODEL_CANDIDATES])
+    else:
+        t0 = time.time()
+        try:
+            with open(model_path, "rb") as f:
+                model_data = pickle.load(f)  # noqa: S301 — trusted file shipped with the image
+            model = model_data["model"]
+            # The classifier was trained on string labels ('0'..'9', 'A'..'Z').
+            classes = [str(c) for c in model.classes_]
+            logger.info("Model loaded in %.2fs from %s — %d classes", time.time() - t0, model_path, len(classes))
+        except Exception:
+            logger.exception("Failed to load model from %s", model_path)
+            model = None
 
-if MODEL_PATH is not None:
-    t0 = time.time()
-    try:
-        with open(MODEL_PATH, "rb") as f:
-            model_data = pickle.load(f)  # noqa: S301 — trusted local file
-        model = model_data["model"]
-        labels_dict = model_data.get("labels_dict", {})
-        logger.info(
-            "Model loaded in %.2fs from %s — %d classes",
-            time.time() - t0,
-            MODEL_PATH,
-            len(labels_dict) or len(SIGN_LABELS),
-        )
-    except Exception as exc:
-        logger.error("Failed to load model from %s: %s", MODEL_PATH, exc)
-else:
-    logger.error("*** MODEL NOT FOUND — checked %d candidates ***", len([c for c in MODEL_CANDIDATES if c]))
-    for i, c in enumerate(filter(None, MODEL_CANDIDATES)):
-        logger.error("  Candidate %d: %s (exists=%s)", i + 1, c, c.exists())
-
-if model is None:
-    logger.error("*** ALL /predict REQUESTS WILL RETURN 503 — model not loaded ***")
-
-# ── Prediction cache & smoothing ──────────────────────────────────────────────
-PREDICTION_CACHE_SIZE = 256
-HISTORY_SIZE = 5
-_prediction_history: deque[str] = deque(maxlen=HISTORY_SIZE)
-_history_lock = threading.Lock()
+if model is None and os.environ.get("SANJOG_SKIP_MODEL") != "1":
+    logger.error("All /predict requests will return 503 — model not loaded")
 
 
-@lru_cache(maxsize=PREDICTION_CACHE_SIZE)
-def _cached_predict(landmarks_tuple: tuple[float, ...]) -> int:
-    arr = np.array(landmarks_tuple).reshape(1, -1)
+def classify(features: tuple[float, ...]) -> tuple[str, float]:
+    """Return (label, confidence) for one 42-value feature vector."""
+    arr = np.asarray(features, dtype=np.float64).reshape(1, -1)
     with _model_lock:
-        return int(model.predict(arr)[0])
+        proba = model.predict_proba(arr)[0]
+    idx = int(np.argmax(proba))
+    return classes[idx], float(proba[idx])
 
 
-# ── Per-process rate limiting (non-blocking) ──────────────────────────────────
-REQUEST_INTERVAL = float(os.environ.get("REQUEST_INTERVAL", "0.05"))
-_last_request_time: float = 0.0
-_rate_lock = threading.Lock()
-
-# ── Request timing stats (thread-safe) ────────────────────────────────────────
-_request_times: deque[float] = deque(maxlen=200)
-_stats_lock = threading.Lock()
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 def _validate_landmarks(raw: object) -> tuple[tuple[float, ...] | None, str | None]:
-    """Validate and normalise a landmarks payload.  Returns (tuple, None) or (None, error)."""
+    """Validate a landmarks payload. Returns (values, None) or (None, error)."""
     if not isinstance(raw, list):
         return None, "landmarks must be a list"
     if len(raw) != 42:
-        return None, f"expected 42 values (21 landmarks × x,y), got {len(raw)}"
-    try:
-        vals = tuple(float(v) for v in raw)
-    except (TypeError, ValueError):
+        return None, f"expected 42 values (21 landmarks x,y), got {len(raw)}"
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in raw):
         return None, "landmarks must contain only numbers"
-    if any(np.isnan(v) or np.isinf(v) for v in vals):
+    vals = tuple(float(v) for v in raw)
+    if any(not math.isfinite(v) for v in vals):
         return None, "landmarks contain NaN or infinite values"
+    # Features are normalised to the video frame (0..1) minus the hand's minimum,
+    # so legitimate values sit in [0, 1]. Allow a small margin for jitter.
+    if any(v < -0.05 or v > 1.05 for v in vals):
+        return None, "landmarks must be normalised to the video frame (0..1)"
     return vals, None
 
 
 def _error(message: str, status: int = 400):
-    """Return a consistent JSON error envelope — never leak internal details."""
     return jsonify({"error": message}), status
 
 
-def _record_latency(elapsed_ms: float) -> None:
-    """Thread-safe append to the timing stats deque."""
-    with _stats_lock:
-        _request_times.append(elapsed_ms)
-    if len(_request_times) % 50 == 0:
-        with _stats_lock:
-            avg = sum(_request_times) / len(_request_times) if _request_times else 0
-        logger.info("Avg prediction latency: %.1f ms (n=%d)", avg, len(_request_times))
+@app.errorhandler(HTTPException)
+def handle_http_error(exc: HTTPException):
+    """JSON for every HTTP error (404, 405, 413, 429 …) instead of Werkzeug's HTML."""
+    message = "Too many requests" if exc.code == 429 else (exc.description or exc.name)
+    return _error(message, exc.code or 500)
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+@app.errorhandler(Exception)
+def handle_unexpected_error(exc: Exception):
+    logger.exception("Unhandled error")
+    return _error("Internal server error", 500)
+
+
 @app.route("/", methods=["GET"])
 def health_check():
     if model is not None:
@@ -196,85 +174,44 @@ def health_check():
 
 
 @app.route("/predict", methods=["POST"])
+@limiter.limit(lambda: f"{RATELIMIT_PER_MINUTE} per minute")
 def predict():
-    global _last_request_time
-
-    # Non-blocking rate-limit: reject too-fast callers instead of sleeping
-    now = time.time()
-    with _rate_lock:
-        elapsed = now - _last_request_time
-        if elapsed < REQUEST_INTERVAL:
-            return _error("Too many requests", 429)
-        _last_request_time = now
-
     if model is None:
         return _error("Recognition model is not available", 503)
 
     data = request.get_json(silent=True)
-    if not data or "landmarks" not in data:
+    if not isinstance(data, dict) or "landmarks" not in data:
         return _error("Request body must be JSON with a 'landmarks' field")
 
     landmarks, err = _validate_landmarks(data["landmarks"])
     if err:
         return _error(err)
 
-    t0 = time.time()
-    try:
-        raw_prediction = _cached_predict(landmarks)
-    except Exception:
-        logger.exception("Prediction error")
-        return _error("Prediction failed", 500)
+    t0 = time.perf_counter()
+    label, confidence = classify(landmarks)
+    elapsed_ms = (time.perf_counter() - t0) * 1000
 
-    label = labels_dict.get(raw_prediction, SIGN_LABELS.get(raw_prediction, str(raw_prediction)))
-
-    # Thread-safe history update
-    with _history_lock:
-        _prediction_history.append(label)
-        # Temporal smoothing: majority vote over recent history
-        smoothed = Counter(_prediction_history).most_common(1)[0][0] if len(_prediction_history) >= 3 else label
-
-    # Confidence
-    try:
-        arr = np.array(landmarks).reshape(1, -1)
-        with _model_lock:
-            confidence = float(model.predict_proba(arr)[0][raw_prediction])
-    except Exception:
-        confidence = 0.5
-
-    elapsed_ms = (time.time() - t0) * 1000
-    _record_latency(elapsed_ms)
+    confidence = round(confidence, 4)
+    issued_at = int(time.time())
+    nonce = secrets.token_hex(12)
 
     return jsonify({
-        "prediction": smoothed,
-        "confidence": round(confidence, 4),
+        "prediction": label,
+        "confidence": confidence,
         "processing_time_ms": round(elapsed_ms, 2),
+        "issued_at": issued_at,
+        "nonce": nonce,
+        "signature": sign_prediction(label, confidence, issued_at, nonce),
     }), 200
 
 
 @app.route("/gestures", methods=["GET"])
 def list_gestures():
-    gestures = sorted(set(labels_dict.values()) or set(SIGN_LABELS.values()))
-    return jsonify({"gestures": gestures}), 200
+    return jsonify({"gestures": sorted(classes)}), 200
 
 
-@app.route("/stats", methods=["GET"])
-def get_stats():
-    with _stats_lock:
-        avg = sum(_request_times) / len(_request_times) if _request_times else 0
-        count = len(_request_times)
-    status_str = "healthy" if model is not None else "degraded"
-    return jsonify({
-        "status": status_str,
-        "model_loaded": model is not None,
-        "average_latency_ms": round(avg, 2),
-        "request_count": count,
-        "cors_enforced": bool(ALLOWED_ORIGINS),
-    }), 200
-
-
-# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 7860))
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
     logger.info("Starting Sanjog backend on port %d (debug=%s)", port, debug)
     app.run(host="0.0.0.0", port=port, debug=debug, threaded=True)

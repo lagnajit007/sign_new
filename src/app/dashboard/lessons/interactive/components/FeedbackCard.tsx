@@ -44,12 +44,12 @@ const feedbackConfig = {
     titleColor: 'text-gray-500',
   },
   idle: {
-    bg: 'bg-[#FAF7FF]',
-    border: 'border-[#EAE4FF]',
+    bg: 'bg-canvas',
+    border: 'border-line',
     icon: AlertTriangle,
-    iconColor: 'text-[#7D54FF]/50',
+    iconColor: 'text-brand/50',
     title: 'Waiting…',
-    titleColor: 'text-[#7E7A93]',
+    titleColor: 'text-fg-subtle',
   },
   error: {
     bg: 'bg-red-50',
@@ -108,12 +108,12 @@ export default function FeedbackCard({ type, message, confidence, xpEarned, targ
                 {type === 'correct' ? randomPositive : config.title}
               </h4>
               {confidence !== undefined && (
-                <span className="text-xs font-semibold text-[#7E7A93] bg-white px-2 py-0.5 rounded-full border">
+                <span className="text-xs font-semibold text-fg-subtle bg-panel px-2 py-0.5 rounded-full border">
                   Confidence {Math.round(confidence * 100)}%
                 </span>
               )}
             </div>
-            <p className="text-sm text-[#7E7A93] mt-1">{message}</p>
+            <p className="text-sm text-fg-subtle mt-1">{message}</p>
             {type === 'correct' && xpEarned && xpEarned > 0 && (
               <motion.div
                 initial={{ scale: 0 }}
@@ -125,7 +125,7 @@ export default function FeedbackCard({ type, message, confidence, xpEarned, targ
               </motion.div>
             )}
             {type === 'incorrect' && detectedSign && targetSign && detectedSign !== targetSign && (
-              <p className="text-xs text-[#7E7A93] mt-1">
+              <p className="text-xs text-fg-subtle mt-1">
                 Detected <span className="font-semibold text-orange-600">"{detectedSign}"</span> — show <span className="font-semibold">"{targetSign}"</span> instead
               </p>
             )}

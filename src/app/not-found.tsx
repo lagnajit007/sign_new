@@ -9,12 +9,12 @@ export default function NotFound() {
         <p className="text-gray-600 mb-6">
           Sorry, we couldn't find the page you're looking for.
         </p>
-        <a
+        <Link
           href="/"
           className="px-4 py-2 bg-[#7D54FF] text-white rounded-md hover:bg-[#6840E0] transition-colors inline-block"
         >
           Go back home
-        </a>
+        </Link>
       </div>
     </div>
   );

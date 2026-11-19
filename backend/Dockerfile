@@ -1,24 +1,23 @@
+# Sanjog recognition backend — built for Hugging Face Spaces (Docker SDK).
+# Spaces run the container as UID 1000 and route traffic to port 7860.
 FROM python:3.12-slim
 
-WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=7860
 
-# Install system dependencies for TensorFlow
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libc6-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN useradd --create-home --uid 1000 app
+WORKDIR /home/app/backend
 
-COPY requirements.txt .
+COPY --chown=app:app requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Cache-bust layer — Railway-provided ARGs change every deploy, forcing COPY re-run
-ARG RAILWAY_GIT_COMMIT_SHA
-ARG RAILWAY_SNAPSHOT_ID
-ARG RAILWAY_DEPLOYMENT_ID
-RUN echo "Build: commit=$RAILWAY_GIT_COMMIT_SHA snapshot=$RAILWAY_SNAPSHOT_ID deploy=$RAILWAY_DEPLOYMENT_ID" > /build-stamp
+COPY --chown=app:app app.py ./
+COPY --chown=app:app models/model.p ./models/model.p
 
-COPY . .
+USER app
+EXPOSE 7860
 
-EXPOSE 5000
-
-CMD gunicorn --workers 2 --bind 0.0.0.0:${PORT:-5000} --timeout 120 --log-level info app:app
+# gthread workers handle many short concurrent requests; inference takes ~5 ms.
+CMD gunicorn --workers 2 --threads 8 --worker-class gthread \
+    --bind 0.0.0.0:${PORT} --timeout 30 --log-level info app:app

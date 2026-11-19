@@ -1,13 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, Heart, Eye, Globe, Code, MapPin, Mail, Github, Linkedin } from "lucide-react"
-
-const team = [
-  { name: "Team Member 1", role: "Role", initials: "TM", gradient: "from-brand to-purple-400" },
-  { name: "Team Member 2", role: "Role", initials: "TM", gradient: "from-sky to-blue-400" },
-  { name: "Team Member 3", role: "Role", initials: "TM", gradient: "from-gold to-orange-400" },
-  { name: "Team Member 4", role: "Role", initials: "TM", gradient: "from-success to-emerald-400" },
-  { name: "Team Member 5", role: "Role", initials: "TM", gradient: "from-coral to-red-400" },
-]
+import { ArrowLeft, Heart, Eye, Globe, Code, MapPin, Mail } from "lucide-react"
 
 const roadmap = [
   { year: "2023", title: "Research & Prototype", desc: "Initial thesis project exploring AI sign language recognition." },
@@ -117,30 +109,9 @@ export default function AboutPage() {
             <p>
               After graduation, the project didn&apos;t end. The team continued refining the AI models,
               redesigning the user experience, and rebuilding the platform with modern technology.
-              What started as a thesis experiment is now a production-ready learning platform
-              used by learners around the world.
+              What started as a thesis experiment is now an evolving learning platform that the
+              team continues to test and improve.
             </p>
-          </div>
-        </section>
-
-        {/* The Team */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center">
-              <Linkedin className="w-5 h-5 text-success" />
-            </div>
-            <h2 className="text-2xl font-bold text-ink">The Team</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {team.map((member) => (
-              <div key={member.name} className="bg-bg rounded-2xl p-6 border border-brand-soft text-center">
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center mx-auto mb-3`}>
-                  <span className="text-white text-xl font-bold">{member.initials}</span>
-                </div>
-                <h3 className="font-bold text-ink">{member.name}</h3>
-                <p className="text-xs text-brand font-medium">{member.role}</p>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -154,7 +125,7 @@ export default function AboutPage() {
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {[
-              { label: "Frontend", value: "Next.js 14, Tailwind CSS, Framer Motion" },
+              { label: "Frontend", value: "Next.js, Tailwind CSS, Framer Motion" },
               { label: "AI/ML", value: "TensorFlow.js, Handpose model, custom gesture classifier" },
               { label: "Backend", value: "Next.js API routes, Prisma ORM" },
               { label: "Database", value: "PostgreSQL via Supabase" },

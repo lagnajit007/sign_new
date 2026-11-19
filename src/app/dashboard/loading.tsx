@@ -1,34 +1,28 @@
-import { SkeletonBox } from "@/components/skeletons/SkeletonCard"
+import { PageBody, Skeleton } from "@/components/app/primitives";
 
 export default function DashboardLoading() {
   return (
-    <div className="max-w-7xl mx-auto p-4 lg:p-6 animate-pulse space-y-6">
-      {/* Header skeleton */}
-      <div className="bg-white rounded-2xl border border-[#ECE8FF] p-6">
-        <SkeletonBox className="h-8 w-48 mb-2" />
-        <SkeletonBox className="h-4 w-72 mb-4" />
-        <SkeletonBox className="h-3 w-full mb-1" />
-        <SkeletonBox className="h-2 w-full rounded-full mb-4" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-[#FAF7FF] rounded-xl p-4">
-              <SkeletonBox className="h-3 w-16 mb-2" />
-              <SkeletonBox className="h-6 w-20" />
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Lesson grid skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-[#ECE8FF] p-5">
-            <SkeletonBox className="h-4 w-24 mb-3" />
-            <SkeletonBox className="h-5 w-40 mb-2" />
-            <SkeletonBox className="h-3 w-full mb-1" />
-            <SkeletonBox className="h-2 w-full rounded-full" />
+    <PageBody className="space-y-4" aria-busy="true" aria-label="Loading">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="rounded-xl border border-line bg-panel p-4">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="mt-5 h-6 w-24" />
+            <Skeleton className="mt-2 h-3 w-32" />
           </div>
         ))}
       </div>
-    </div>
-  )
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border border-line bg-panel p-4 lg:col-span-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="mt-6 h-[150px] w-full" />
+        </div>
+        <div className="rounded-xl border border-line bg-panel p-4">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="mt-6 h-16 w-16 rounded-xl" />
+          <Skeleton className="mt-6 h-2 w-full" />
+        </div>
+      </div>
+    </PageBody>
+  );
 }

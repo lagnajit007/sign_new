@@ -13,18 +13,22 @@ datasource db {
 }
 
 /// Local mirror of a Clerk user, keyed by Clerk's user id.
-/// Created lazily on the first authenticated API request (see src/lib/user.ts).
+/// Created by the Clerk webhook (src/app/api/webhooks/clerk) or lazily on the
+/// first authenticated request (src/lib/user.ts). Demo users have clerkId "demo_*".
 model User {
   id             String   @id @default(cuid())
   clerkId        String   @unique
   email          String?
   name           String?
-  username       String?
+  username       String?  @unique
   bio            String?
   learningGoal   String?
   preferredLang  String   @default("en")
   timezone       String   @default("UTC")
   avatarId       Int      @default(1)
+  /// Seeded sample learner shown (with a "Demo" badge) until real users arrive.
+  /// Hidden everywhere when SHOW_DEMO_USERS=false.
+  isDemo         Boolean  @default(false)
   xp             Int      @default(0)
   level          Int      @default(1)
   streakDays     Int      @default(0)
@@ -39,6 +43,7 @@ model User {
   settings       UserSettings?
 
   @@index([xp(sort: Desc)])
+  @@index([isDemo])
 }
 
 /// Per-user settings for preferences, notifications, privacy, accessibility.
@@ -93,11 +98,15 @@ model RecognitionAttempt {
   predictedLabel String
   confidence     Float
   correct        Boolean
+  /// Nonce from the signed backend prediction; unique to block replays.
+  nonce          String?  @unique
   createdAt      DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([correct, createdAt])
 }
 
 /// Catalog of achievements (seeded). User unlock state lives in UserAchievement.

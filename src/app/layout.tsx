@@ -1,13 +1,20 @@
 import "./globals.css"
+import "@/components/arc/foundation.css"
 import type { Metadata, Viewport } from "next"
-import { Inter, Poppins } from "next/font/google"
+import { Geist, Inter, Poppins } from "next/font/google"
 import ClientWrapper from '@/components/ClientWrapper'
 
 // Initialize the Inter font (body)
 const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-sans',
+  variable: '--font-inter',
+})
+
+const geist = Geist({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-geist',
 })
 
 // Poppins for headings (friendly, rounded, modern)
@@ -31,7 +38,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1
 }
 
 // This ensures the layout is properly typed
@@ -40,17 +46,22 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey) {
+    throw new Error('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be configured.');
+  }
+
   const clerkProps = {
-    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? 'pk_test_dummy-key-for-build-only',
+    publishableKey,
     signInUrl: "/sign-in",
     signUpUrl: "/sign-up",
-    afterSignInUrl: "/dashboard",
-    afterSignUpUrl: "/dashboard",
-    redirectUrl: "/dashboard"
+    signInFallbackRedirectUrl: "/dashboard",
+    signUpFallbackRedirectUrl: "/dashboard",
+    telemetry: false,
   };
 
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
+    <html lang="en" data-accent="violet" className={`${geist.variable} ${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased bg-bg text-ink">
         <ClientWrapper clerkProps={clerkProps}>
           {children}

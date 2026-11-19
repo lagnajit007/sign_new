@@ -20,7 +20,7 @@ export default function Error({
         <div className="text-[#7D54FF] text-6xl mb-6">😕</div>
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Something went wrong</h1>
         <p className="text-gray-600 mb-6">
-          We're sorry, but something went wrong. Our team has been notified.
+          We're sorry, but something went wrong. Please try again in a moment.
         </p>
         <div className="flex gap-4 justify-center">
           <button

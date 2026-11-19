@@ -35,8 +35,8 @@ const milestones = [
   {
     year: "2026",
     icon: Users,
-    title: "Growing Community",
-    description: "Sanjog continues to grow. New features, expanded sign language support, and a thriving community of learners from around the world.",
+    title: "What's next",
+    description: "Next up: more signs beyond the alphabet and numbers, words and phrases, and better recognition in tricky lighting.",
     color: "text-gold",
     bg: "bg-gold/10",
     border: "border-gold/30",
@@ -59,7 +59,7 @@ export default function OurStory() {
             From a University Project to a Learning Platform
           </h2>
           <p className="text-lg text-ink-soft">
-            What started as a thesis experiment is now helping people around the world learn sign language.
+            What started as a thesis experiment is now open for anyone to try, for free.
           </p>
         </div>
 

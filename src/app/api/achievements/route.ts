@@ -2,21 +2,20 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateUser } from '@/lib/user';
 import { computeUserStats } from '@/lib/stats';
-import { criteriaProgress, isCriteriaMet } from '@/lib/gamification';
+import { criteriaProgress } from '@/lib/gamification';
+import { apiError, withErrorHandling } from '@/lib/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /// Achievement catalog joined with the current user's unlock state. Shape
 /// matches what src/app/dashboard/achievements/page.tsx renders.
-export async function GET() {
+export const GET = withErrorHandling('achievements', async () => {
   const user = await getOrCreateUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!user) return apiError('Unauthorized', 401);
 
   const [catalog, unlocks, stats] = await Promise.all([
-    prisma.achievement.findMany(),
+    prisma.achievement.findMany({ where: { NOT: { criteriaType: 'manual' } }, orderBy: { xpReward: 'asc' } }),
     prisma.userAchievement.findMany({ where: { userId: user.id } }),
     computeUserStats(user.id),
   ]);
@@ -24,7 +23,7 @@ export async function GET() {
 
   const achievements = catalog.map((ach) => {
     const unlock = unlockByAchievementId.get(ach.id);
-    const earned = Boolean(unlock?.unlockedAt) || isCriteriaMet(ach.criteriaType, ach.criteriaValue, stats);
+    const earned = Boolean(unlock?.unlockedAt);
     return {
       id: ach.id,
       key: ach.key,
@@ -35,16 +34,10 @@ export async function GET() {
       color: ach.color,
       xp: ach.xpReward,
       earned,
-      date: unlock?.unlockedAt
-        ? new Date(unlock.unlockedAt).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })
-        : undefined,
+      unlockedAt: unlock?.unlockedAt ?? null,
       progress: earned ? 100 : criteriaProgress(ach.criteriaType, ach.criteriaValue, stats),
     };
   });
 
   return NextResponse.json({ error: null, achievements });
-}
+});

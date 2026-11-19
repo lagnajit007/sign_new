@@ -39,16 +39,16 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       // You can render any custom fallback UI
       return this.props.fallback || (
-        <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="min-h-screen flex items-center justify-center bg-canvas">
           <div className="text-center p-8 max-w-md">
-            <div className="text-[#7D54FF] text-6xl mb-6">😕</div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-6">
+            <div className="text-brand text-6xl mb-6">😕</div>
+            <h1 className="text-2xl font-bold text-fg mb-4">Something went wrong</h1>
+            <p className="text-fg-muted mb-6">
               We're sorry, but an error occurred while rendering this page.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-[#7D54FF] text-white rounded-md hover:bg-[#6840E0] transition-colors"
+              className="px-4 py-2 bg-brand text-brand-fg rounded-md hover:bg-brand-hover transition-colors"
             >
               Refresh the page
             </button>

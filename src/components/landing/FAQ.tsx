@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: "How does AI recognition work?",
-    a: "Sanjog uses TensorFlow.js with a handpose model that tracks 21 key points on your hand. When you sign, the AI analyzes hand shape, position, and movement patterns, comparing them against reference data to determine accuracy.",
+    a: "Sanjog uses TensorFlow.js with a handpose model that tracks 21 key points on your hand. When you sign, a classifier reads the shape of your hand from those points and tells you which letter or number it sees, with a confidence score.",
   },
   {
     q: "Is Sanjog free?",
@@ -29,11 +29,11 @@ const faqs = [
   },
   {
     q: "How accurate is the recognition?",
-    a: "Our AI achieves approximately 94% accuracy on standard ASL alphabet gestures under good lighting conditions. Accuracy improves with proper hand positioning and adequate lighting.",
+    a: "It depends on lighting, camera angle and how clearly the hand is in frame. Every attempt shows the model’s confidence, and a sign only counts as correct at 70% confidence or higher. Good, even lighting and a plain background help the most.",
   },
   {
     q: "Is my camera footage stored?",
-    a: "No. All camera processing happens locally in your browser using TensorFlow.js. Your video feed is never recorded, stored, or transmitted to any server.",
+    a: "No. Your video is never recorded, stored or uploaded. Hand tracking runs in your browser with TensorFlow.js; only 42 numbers describing your hand’s shape are sent to the recognition service, and only the result is saved to your account.",
   },
 ]
 

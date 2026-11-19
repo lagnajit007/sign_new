@@ -3,7 +3,6 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Clock, Target, Zap, Award, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
 import Button from '@/components/Button';
 import KpiCard from '@/components/KpiCard';
 import { triggerCelebration } from '@/lib/animations';
@@ -56,16 +55,16 @@ export default function CompletionScreen({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-        className="bg-white rounded-3xl max-w-lg w-full mx-auto shadow-2xl overflow-hidden"
+        className="bg-panel rounded-3xl max-w-lg w-full mx-auto shadow-2xl overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] p-6 text-center text-white">
+        <div className="bg-gradient-to-r from-brand to-brand-hover p-6 text-center text-white">
           <motion.div
             ref={trophyRef}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-            className="w-20 h-20 rounded-full bg-white/20 mx-auto mb-3 flex items-center justify-center"
+            className="w-20 h-20 rounded-full bg-panel/20 mx-auto mb-3 flex items-center justify-center"
           >
             <Trophy className="w-10 h-10" />
           </motion.div>
@@ -106,16 +105,16 @@ export default function CompletionScreen({
 
         {/* XP Bar */}
         <div className="px-6 pb-4">
-          <div className="flex justify-between text-xs text-[#7E7A93] mb-1">
+          <div className="flex justify-between text-xs text-fg-subtle mb-1">
             <span>Total XP</span>
             <span>{totalXp} XP</span>
           </div>
-          <div className="h-2 bg-[#EAE4FF] rounded-full overflow-hidden">
+          <div className="h-2 bg-brand-tint rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: '100%' }}
               transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] rounded-full"
+              className="h-full bg-gradient-to-r from-brand to-brand-hover rounded-full"
             />
           </div>
         </div>
@@ -124,7 +123,7 @@ export default function CompletionScreen({
         <div className="p-6 pt-2 space-y-3">
           <Button
             variant="primary"
-            className="w-full !rounded-xl !shadow-none bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF]"
+            className="w-full !rounded-xl !shadow-none bg-gradient-to-r from-brand to-brand-hover"
             onClick={onContinue}
             icon={ArrowRight}
             iconPosition="right"

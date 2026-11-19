@@ -2,74 +2,82 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateUser } from '@/lib/user';
 import { ALPHABET_COUNT, NUMBER_COUNT, computeUserStats } from '@/lib/stats';
+import { apiError, withErrorHandling } from '@/lib/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+type Range = 'week' | 'month' | 'year';
+const DAY = 86_400_000;
 
-/// Analytics for the progress page: weekly activity, completion-by-category,
-/// recent activity, and weak signs.
-export async function GET() {
-  const user = await getOrCreateUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+function buckets(range: Range, now: Date) {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (range === 'year') {
+    return Array.from({ length: 12 }, (_, i) => {
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11 + i, 1));
+      const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+      return { label: start.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }), start, end };
+    });
   }
+  const days = range === 'month' ? 30 : 7;
+  return Array.from({ length: days }, (_, i) => {
+    const start = new Date(today - (days - 1 - i) * DAY);
+    const label =
+      range === 'week'
+        ? start.toLocaleString('en-US', { weekday: 'short', timeZone: 'UTC' })
+        : start.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    return { label, start, end: new Date(start.getTime() + DAY) };
+  });
+}
 
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [recentAttempts, weekAttempts, signProgress, stats] = await Promise.all([
+/** Analytics for the progress page. `?range=week|month|year` (UTC buckets). */
+export const GET = withErrorHandling('progress', async (request: Request) => {
+  const user = await getOrCreateUser();
+  if (!user) return apiError('Unauthorized', 401);
+
+  const param = new URL(request.url).searchParams.get('range') ?? 'week';
+  if (param !== 'week' && param !== 'month' && param !== 'year') {
+    return apiError('range must be week, month or year', 400);
+  }
+  const range: Range = param;
+  const now = new Date();
+  const slots = buckets(range, now);
+
+  const [recentAttempts, rangeAttempts, signProgress, stats] = await Promise.all([
     prisma.recognitionAttempt.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
     prisma.recognitionAttempt.findMany({
-      where: { userId: user.id, createdAt: { gte: since } },
+      where: { userId: user.id, createdAt: { gte: slots[0].start } },
       select: { createdAt: true, correct: true },
     }),
     prisma.signProgress.findMany({ where: { userId: user.id } }),
     computeUserStats(user.id),
   ]);
 
-  // Weekly activity: count attempts per weekday.
-  const perDay = new Array(7).fill(0);
-  for (const a of weekAttempts) {
-    perDay[new Date(a.createdAt).getDay()] += 1;
-  }
-  const activityData = DAY_LABELS.map((day, i) => ({ day, value: perDay[i] }));
+  const activityData = slots.map((s) => {
+    const inSlot = rangeAttempts.filter((a) => a.createdAt >= s.start && a.createdAt < s.end);
+    return { label: s.label, attempts: inSlot.length, correct: inSlot.filter((a) => a.correct).length };
+  });
 
-  // Completion-by-category (only the categories this app actually teaches).
   const completionData = [
-    {
-      id: 1,
-      name: 'Alphabets',
-      total: ALPHABET_COUNT,
-      completed: stats.alphabetCompleted,
-      color: 'bg-[#7D54FF]',
-    },
-    {
-      id: 2,
-      name: 'Numbers',
-      total: NUMBER_COUNT,
-      completed: stats.numberCompleted,
-      color: 'bg-[#5EC8FF]',
-    },
+    { id: 'alphabet', name: 'Alphabet', total: ALPHABET_COUNT, completed: stats.alphabetCompleted },
+    { id: 'number', name: 'Numbers', total: NUMBER_COUNT, completed: stats.numberCompleted },
   ];
 
-  // Recent activity from the attempt log.
   const recentActivity = recentAttempts.map((a) => ({
     id: a.id,
-    type: a.correct ? 'lesson' : 'practice',
-    name: a.correct
-      ? `Signed "${a.signLabel}" correctly`
-      : `Practiced "${a.signLabel}"`,
-    category: a.lessonType === 'alphabet' ? 'alphabets' : 'numbers',
+    signLabel: a.signLabel,
+    lessonType: a.lessonType,
+    predictedLabel: a.predictedLabel,
+    correct: a.correct,
     confidence: Math.round(a.confidence * 100),
     createdAt: a.createdAt,
   }));
 
-  // Weak signs: attempted but lowest best-accuracy, not yet completed.
-  const weakSigns = [...signProgress]
+  const weakSigns = signProgress
     .filter((p) => p.attempts > 0 && !p.completed)
     .sort((a, b) => a.bestAccuracy - b.bestAccuracy)
     .slice(0, 5)
@@ -80,17 +88,22 @@ export async function GET() {
       attempts: p.attempts,
     }));
 
+  const mastered = signProgress.filter((p) => p.completed).map((p) => p.signLabel);
+
   return NextResponse.json({
     error: null,
+    range,
     activityData,
     completionData,
     recentActivity,
     weakSigns,
+    mastered,
     summary: {
       xp: user.xp,
       lessonsCompleted: stats.lessonsCompleted,
       accuracy: Math.round(stats.overallAccuracy * 100),
       streakDays: user.streakDays,
+      totalAttempts: stats.totalAttempts,
     },
   });
-}
+});

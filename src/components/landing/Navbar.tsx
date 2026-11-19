@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Menu, X } from "lucide-react"
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
+import { Button } from "@/components/arc/button/button"
 
 const navLinks = [
   { href: "#how-it-works", label: "How It Works" },
@@ -47,14 +48,14 @@ export default function Navbar() {
             ))}
             <SignedOut>
               <SignInButton mode="redirect">
-                <button className="px-4 py-2 text-brand border border-brand rounded-full text-sm font-medium hover:bg-bg transition-colors">
+                <Button variant="secondary">
                   Sign In
-                </button>
+                </Button>
               </SignInButton>
               <SignUpButton mode="redirect">
-                <button className="px-5 py-2 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition-all hover:scale-[1.02] active:scale-[0.98] shadow-btn">
+                <Button variant="primary">
                   Start Free
-                </button>
+                </Button>
               </SignUpButton>
             </SignedOut>
             <SignedIn>
@@ -93,14 +94,14 @@ export default function Navbar() {
           <div className="flex gap-3 pt-2">
             <SignedOut>
               <SignInButton mode="redirect">
-                <button className="flex-1 px-4 py-2 text-brand border border-brand rounded-full text-sm font-medium">
+                <Button variant="secondary" className="flex-1">
                   Sign In
-                </button>
+                </Button>
               </SignInButton>
               <SignUpButton mode="redirect">
-                <button className="flex-1 px-4 py-2 bg-brand text-white rounded-full text-sm font-semibold">
+                <Button variant="primary" className="flex-1">
                   Start Free
-                </button>
+                </Button>
               </SignUpButton>
             </SignedOut>
             <SignedIn>

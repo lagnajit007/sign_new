@@ -1,8 +1,5 @@
-"use client"
-
-import { useState, useEffect, useRef } from "react"
-import { useAuth, useUser } from "@clerk/nextjs"
-import Loader from "@/components/Loader"
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
 import Navbar from "@/components/landing/Navbar"
 import HeroSection from "@/components/landing/HeroSection"
 import HowItWorks from "@/components/landing/HowItWorks"
@@ -11,51 +8,36 @@ import LearningJourney from "@/components/landing/LearningJourney"
 import Features from "@/components/landing/Features"
 import WhySanjogExists from "@/components/landing/WhySanjogExists"
 import OurStory from "@/components/landing/OurStory"
-import MeetTheTeam from "@/components/landing/MeetTheTeam"
-import CommunityAndImpact from "@/components/landing/CommunityAndImpact"
 import FAQ from "@/components/landing/FAQ"
 import FinalCTA from "@/components/landing/FinalCTA"
 import Footer from "@/components/landing/Footer"
 
-export default function LandingPage() {
-  const [isLoading, setIsLoading] = useState(true)
-  const { isLoaded: isAuthLoaded, userId } = useAuth()
-  const { isLoaded: isUserLoaded } = useUser()
-  const pageRef = useRef<HTMLDivElement>(null!)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1200)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    if (isAuthLoaded && isUserLoaded && userId) {
-      window.location.href = "/dashboard"
-    }
-  }, [isAuthLoaded, isUserLoaded, userId])
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <Loader />
-      </div>
-    )
-  }
+// Server-rendered so the marketing page is visible to crawlers and paints
+// immediately; signed-in visitors go straight to their dashboard.
+export default async function LandingPage() {
+  const { userId } = await auth()
+  if (userId) redirect("/dashboard")
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white">
+      <a
+        href="#main-content"
+        className="sr-only fixed left-4 top-4 z-[60] rounded-md bg-brand px-4 py-2 font-semibold text-white focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+      >
+        Skip to main content
+      </a>
       <Navbar />
-      <HeroSection />
-      <HowItWorks />
-      <AIShowcase />
-      <LearningJourney />
-      <Features />
-      <WhySanjogExists />
-      <OurStory />
-      <MeetTheTeam />
-      <CommunityAndImpact />
-      <FAQ />
-      <FinalCTA />
+      <main id="main-content">
+        <HeroSection />
+        <HowItWorks />
+        <AIShowcase />
+        <LearningJourney />
+        <Features />
+        <WhySanjogExists />
+        <OurStory />
+        <FAQ />
+        <FinalCTA />
+      </main>
       <Footer />
     </div>
   )

@@ -1,11 +1,13 @@
-"use client"
+"use client";
 
-import ErrorState from "@/components/ErrorState"
+import { ErrorState, PageBody } from "@/components/app/primitives";
 
-export default function DashboardError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function DashboardError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <div className="p-4 lg:p-6">
-      <ErrorState title="Page Error" message={error.message || "Something went wrong loading this page."} onRetry={reset} />
-    </div>
-  )
+    <PageBody>
+      <div className="rounded-xl border border-line bg-panel">
+        <ErrorState message="This page failed to load. It may be a temporary problem." onRetry={reset} />
+      </div>
+    </PageBody>
+  );
 }

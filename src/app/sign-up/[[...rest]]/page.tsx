@@ -47,7 +47,7 @@ export default function SignUpPage() {
               path="/sign-up"
               routing="path"
               signInUrl="/sign-in"
-              redirectUrl="/dashboard"
+              fallbackRedirectUrl="/dashboard"
               appearance={{
                 layout: {
                   logoPlacement: "none",

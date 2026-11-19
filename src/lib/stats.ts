@@ -1,3 +1,4 @@
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { prisma } from './prisma';
 import type { UserStats } from './gamification';
 
@@ -12,38 +13,38 @@ export interface AggregateStats extends UserStats {
 
 /// Compute a user's aggregate gamification stats from their progress + attempts.
 /// Shared by /api/me, /api/attempts (achievement evaluation), and /api/progress.
-export async function computeUserStats(userId: string): Promise<AggregateStats> {
-  const [completedProgress, attemptAgg, correctCount, bestCorrect, challengesCompleted] =
-    await Promise.all([
-      prisma.signProgress.findMany({
-        where: { userId, completed: true },
-        select: { lessonType: true },
-      }),
-      prisma.recognitionAttempt.count({ where: { userId } }),
-      prisma.recognitionAttempt.count({ where: { userId, correct: true } }),
-      prisma.recognitionAttempt.findFirst({
-        where: { userId, correct: true },
-        orderBy: { confidence: 'desc' },
-        select: { confidence: true },
-      }),
-      prisma.userChallenge.count({ where: { userId, completed: true } }),
-    ]);
+export async function computeUserStats(
+  userId: string,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<AggregateStats> {
+  // Four queries in parallel (fits the pool of 5): progress, one attempts
+  // aggregate, challenge count and the user's streak.
+  const [completedProgress, agg, challengesCompleted, user] = await Promise.all([
+    db.signProgress.findMany({
+      where: { userId, completed: true },
+      select: { lessonType: true },
+    }),
+    db.$queryRaw<{ total: number; correct: number; best: number }[]>`
+      SELECT COUNT(*)::int AS total,
+             (COUNT(*) FILTER (WHERE correct))::int AS correct,
+             COALESCE(MAX(confidence) FILTER (WHERE correct), 0)::float8 AS best
+      FROM "RecognitionAttempt" WHERE "userId" = ${userId}`,
+    db.userChallenge.count({ where: { userId, completed: true } }),
+    db.user.findUnique({ where: { id: userId }, select: { streakDays: true } }),
+  ]);
 
+  const attemptAgg = agg[0]?.total ?? 0;
+  const correctCount = agg[0]?.correct ?? 0;
   const alphabetCompleted = completedProgress.filter((p) => p.lessonType === 'alphabet').length;
   const numberCompleted = completedProgress.filter((p) => p.lessonType === 'number').length;
   const lessonsCompleted = completedProgress.length;
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { streakDays: true },
-  });
 
   return {
     lessonsCompleted,
     alphabetCompleted,
     numberCompleted,
     streakDays: user?.streakDays ?? 0,
-    bestSessionAccuracy: bestCorrect?.confidence ?? 0,
+    bestSessionAccuracy: agg[0]?.best ?? 0,
     challengesCompleted,
     totalAttempts: attemptAgg,
     correctAttempts: correctCount,

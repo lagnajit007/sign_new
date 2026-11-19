@@ -1,11 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { DASHBOARD_ROUTES, APP_URL } from '@/lib/config';
+
 
 // Public routes — everything else requires authentication
 const isPublic = createRouteMatcher([
   '/',
+  '/about',
   '/terms',
   '/privacy',
   '/sign-in(.*)',
@@ -13,17 +14,18 @@ const isPublic = createRouteMatcher([
   '/_not-found',
   '/not-found',
   '/api/health',
-  '/api/webhook(.*)',
-  // Clear-session is now auth-gated server-side; keep the route public so
-  // signed-out cookie-corruption recovery still works (the handler checks auth).
-  '/api/clear-session(.*)',
+  '/api/stats/public',
+  // Clerk webhooks are verified with a svix signature inside the handler.
+  '/api/webhooks/clerk',
 ]);
 
 const isClerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
-  // Bail out gracefully if Clerk keys are missing (e.g. during bare build)
-  if (!isClerkConfigured) return NextResponse.next();
+  // Never expose a protected route when authentication is misconfigured.
+  if (!isClerkConfigured && !isPublic(req)) {
+    return new NextResponse('Authentication is not configured.', { status: 503 });
+  }
 
   if (isPublic(req)) return NextResponse.next();
 
@@ -32,15 +34,14 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     await auth.protect();
     return NextResponse.next();
   } catch {
-    const isDashboardOrApi =
-      DASHBOARD_ROUTES.some((r) => req.nextUrl.pathname.startsWith(r)) ||
-      req.nextUrl.pathname.startsWith('/api');
-    if (isDashboardOrApi) {
-      const signInUrl = new URL('/sign-in', req.url);
-      signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
-      return NextResponse.redirect(signInUrl);
+    if (req.nextUrl.pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const signInUrl = new URL('/sign-in', APP_URL);
+
+    // Build the redirect from the request's own origin so it never depends on
+    // NEXT_PUBLIC_APP_URL being set.
+    const signInUrl = new URL('/sign-in', req.nextUrl.origin);
+    signInUrl.searchParams.set('redirect_url', req.nextUrl.pathname);
     return NextResponse.redirect(signInUrl);
   }
 }, {

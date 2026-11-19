@@ -3,7 +3,8 @@
 import React from 'react';
 import StyledComponentsRegistry from '@/lib/registry';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
-import GlobalPreloader from '@/components/GlobalPreloader';
+import { ThemeProvider } from 'next-themes';
+import { Toaster } from 'sonner';
 import dynamic from 'next/dynamic';
 
 // Dynamically import ClerkProvider with SSR enabled. An error boundary wraps
@@ -57,12 +58,12 @@ export default function ClientWrapper({ children, clerkProps }: ClientWrapperPro
 
   const content = (
     <StyledComponentsRegistry>
-      <ClientErrorBoundary>
-        <div className="min-h-screen bg-background text-foreground">
-          <GlobalPreloader />
-          {children}
-        </div>
-      </ClientErrorBoundary>
+      <ThemeProvider attribute={['class', 'data-theme']} defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ClientErrorBoundary>
+          <div className="min-h-screen bg-background text-foreground">{children}</div>
+          <Toaster position="bottom-right" richColors closeButton />
+        </ClientErrorBoundary>
+      </ThemeProvider>
     </StyledComponentsRegistry>
   );
 
