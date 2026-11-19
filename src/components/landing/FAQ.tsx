@@ -12,7 +12,7 @@ const FAQS = [
   },
   {
     q: "How does recognition work?",
-    a: "Your browser tracks 21 points on your hand with TensorFlow.js. A small trained model reads the shape those points make and names the letter or number, with a confidence score. A sign counts as correct at 70% confidence or higher.",
+    a: "Your browser tracks 21 points on your hand with Google's MediaPipe hand tracker. A small trained model reads the shape those points make and names the letter or number, with a confidence score. A sign counts as correct at 70% confidence or higher.",
   },
   {
     q: "Is it free?",
@@ -41,13 +41,13 @@ export default function FAQ() {
   const reduce = useReducedMotion();
 
   return (
-    <section id="faq" className="scroll-mt-20 py-20 md:py-28" aria-labelledby="faq-heading">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
+    <section id="faq" className="scroll-mt-20 px-4 sm:px-6" style={{ paddingTop: "var(--mk-section-y)" }} aria-labelledby="faq-heading">
+      <div className="mx-auto grid max-w-[1080px] gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
         <div>
-          <h2 id="faq-heading" className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+          <h2 id="faq-heading" className="mk-h2 text-fg">
             Questions
           </h2>
-          <p className="mt-3 text-[16px] text-fg-muted">Can&apos;t find an answer? Start a lesson and see for yourself; it takes a minute.</p>
+          <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-fg-subtle">Anything else? Start a lesson and see for yourself. It takes a minute.</p>
         </div>
         <ul className="border-t border-line">
           {FAQS.map((item, i) => {
@@ -56,7 +56,7 @@ export default function FAQ() {
               <li key={item.q} className="border-b border-line">
                 <h3>
                   <button
-                    className="flex w-full items-center justify-between gap-4 rounded-lg py-4 text-left text-[15px] font-medium text-fg"
+                    className="flex w-full items-center justify-between gap-6 rounded-lg py-5 text-left text-[16px] font-medium text-fg transition-colors hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2"
                     aria-expanded={isOpen}
                     aria-controls={`faq-${i}`}
                     onClick={() => setOpen(isOpen ? null : i)}
@@ -64,7 +64,7 @@ export default function FAQ() {
                     {item.q}
                     <Plus
                       aria-hidden
-                      className={cn("size-4 shrink-0 text-fg-subtle transition-transform duration-200", isOpen && "rotate-45")}
+                      className={cn("size-4 shrink-0 text-fg-subtle transition-transform duration-[160ms]", isOpen && "rotate-45 text-fg")}
                     />
                   </button>
                 </h3>
@@ -78,7 +78,7 @@ export default function FAQ() {
                       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="max-w-2xl pb-5 text-sm leading-relaxed text-fg-muted">{item.a}</p>
+                      <p className="max-w-[38rem] pb-6 pr-10 text-[15px] leading-relaxed text-fg-muted">{item.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>

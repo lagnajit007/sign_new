@@ -30,11 +30,14 @@ export function ActivityBars({
   height = 160,
   totalLabel = "Attempts",
   highlightLabel = "Correct",
+  tone = "default",
 }: {
   data: BarDatum[];
   height?: number;
   totalLabel?: string;
   highlightLabel?: string;
+  /** "soft": quiet tint for illustrations; only the latest day is full strength. */
+  tone?: "default" | "soft";
 }) {
   const max = Math.max(1, ...data.map((d) => d.total));
   const showEvery = data.length > 14 ? Math.ceil(data.length / 8) : 1;
@@ -52,7 +55,9 @@ export function ActivityBars({
                 style={{ transform: `scaleY(${Math.max(totalPct, d.total ? 3 : 1.5) / 100})` }}
               >
                 <div
-                  className="absolute inset-0 origin-bottom bg-brand transition-transform duration-500"
+                  className={`absolute inset-0 origin-bottom transition-transform duration-500 ${
+                    tone === "soft" && i !== data.length - 1 ? "bg-brand/30" : "bg-brand"
+                  }`}
                   style={{ transform: `scaleY(${highPct / 100})` }}
                 />
               </div>

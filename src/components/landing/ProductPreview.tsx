@@ -1,76 +1,79 @@
-import { CheckCircle2, Sparkles, Target } from "lucide-react";
 import type { LandingPreview } from "@/lib/landing-preview";
 import { Avatar } from "@/components/app/avatar";
 import { ActivityBars } from "@/components/app/charts";
-import { Stat } from "@/components/app/primitives";
-import { Flame } from "@/components/art/flame";
 import { Reveal } from "./reveal";
+import { StageWindow } from "./StageWindow";
+
+const SIGNS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"];
 
 /**
- * The real dashboard components, rendered with a seeded demo learner's
- * practice history, inside a browser frame. Labelled as a preview.
+ * The dashboard, simplified to four numbers, one quiet chart and the top
+ * three learners, built from a seeded demo learner's real practice history.
  */
 export default function ProductPreview({ data }: { data: LandingPreview }) {
   const { learner, stats, week, leaders } = data;
+  const figures = [
+    { label: "Total XP", value: learner.xp.toLocaleString() },
+    { label: "Streak", value: `${learner.streakDays} days` },
+    { label: "Signs mastered", value: `${stats.mastered} / 36` },
+    { label: "Accuracy", value: `${stats.accuracy}%` },
+  ];
+
   return (
-    <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 md:pb-28" aria-labelledby="preview-heading">
-      <Reveal className="mx-auto max-w-2xl text-center">
-        <h2 id="preview-heading" className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+    <section className="px-3 sm:px-6" style={{ paddingTop: "var(--mk-section-y)" }} aria-labelledby="preview-heading">
+      <Reveal className="mx-auto max-w-2xl px-2 text-center">
+        <h2 id="preview-heading" className="mk-h2 text-fg">
           Your progress, at a glance
         </h2>
-        <p className="mt-3 text-[16px] text-fg-muted">
-          Every attempt feeds your streak, accuracy and the signs you&apos;ve mastered. Here&apos;s the dashboard for one of our demo learners.
-        </p>
+        <p className="mk-lede mx-auto mt-4 max-w-md">Every correct sign adds to your streak, your XP and the letters you&apos;ve mastered.</p>
       </Reveal>
 
-      <Reveal delay={0.08} className="mt-10">
-        <div className="overflow-hidden rounded-2xl border border-line bg-canvas shadow-[0_30px_80px_-30px_rgb(24_24_27/0.35)]">
-          <div className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2.5">
-            <div className="flex gap-1.5" aria-hidden>
-              <span className="size-2.5 rounded-full bg-line-strong" />
-              <span className="size-2.5 rounded-full bg-line-strong" />
-              <span className="size-2.5 rounded-full bg-line-strong" />
-            </div>
-            <div className="mx-auto rounded-md bg-subtle px-3 py-0.5 text-xs text-fg-subtle">sanjog · overview</div>
-            <span className="w-10" />
-          </div>
+      <Reveal delay={0.08} className="mx-auto mt-14 max-w-[1080px]">
+        <StageWindow address="sanjog.app/dashboard" fadeFoot>
+          <div className="pointer-events-none select-none bg-canvas" aria-hidden>
+            <dl className="grid grid-cols-2 gap-y-8 px-6 pb-8 pt-9 sm:px-10 lg:grid-cols-4">
+              {figures.map((f) => (
+                <div key={f.label}>
+                  <dt className="text-[13px] text-fg-subtle">{f.label}</dt>
+                  <dd className="mt-1.5 whitespace-nowrap text-[28px] font-semibold tracking-[-0.02em] text-fg tabular-nums sm:text-[32px]">
+                    {f.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
 
-          <div className="pointer-events-none select-none space-y-3 p-3 sm:p-5" aria-hidden>
-            <div className="flex items-center gap-2.5 px-1">
-              <Avatar name={learner.name} avatarId={learner.avatarId} size={28} />
-              <div className="text-sm font-medium text-fg">{learner.name}</div>
-              <span className="rounded-md bg-subtle px-1.5 py-0.5 text-[11px] text-fg-muted">Demo learner</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat label="Total XP" icon={<Sparkles />} value={learner.xp.toLocaleString()} hint={`Level ${learner.level}`} />
-              <Stat label="Streak" icon={<Flame animated={false} />} value={`${learner.streakDays} days`} />
-              <Stat label="Signs mastered" icon={<CheckCircle2 />} value={`${stats.mastered} / 36`} />
-              <Stat label="Accuracy" icon={<Target />} value={`${stats.accuracy}%`} hint={`${stats.attempts} attempts`} />
-            </div>
-            <div className="grid gap-3 lg:grid-cols-5">
-              <div className="rounded-xl border border-line bg-panel p-4 lg:col-span-3">
-                <p className="text-[13px] font-semibold text-fg">This week</p>
-                <p className="mb-4 text-xs text-fg-subtle">Attempts per day</p>
-                <ActivityBars data={week} height={120} />
+            <div className="grid border-t border-line lg:grid-cols-[1.55fr_1fr]">
+              <div className="px-6 py-7 sm:px-10">
+                <div className="text-[14px] font-medium text-fg">This week</div>
+                <div className="mt-6">
+                  <ActivityBars data={week} height={132} tone="soft" />
+                </div>
               </div>
-              <div className="rounded-xl border border-line bg-panel lg:col-span-2">
-                <p className="border-b border-line px-4 py-3 text-[13px] font-semibold text-fg">Leaderboard</p>
-                <ul>
-                  {leaders.slice(0, 5).map((u, i) => (
-                    <li key={u.id} className="flex items-center gap-2.5 border-b border-line px-4 py-2 text-[13px] last:border-0">
-                      <span className="w-4 tabular-nums text-fg-subtle">{i + 1}</span>
-                      <Avatar name={u.name} avatarId={u.avatarId} size={22} />
+              <div className="border-t border-line px-6 py-7 sm:px-10 lg:border-l lg:border-t-0">
+                <div className="text-[14px] font-medium text-fg">Top learners</div>
+                <ol className="mt-4">
+                  {leaders.slice(0, 3).map((u, i) => (
+                    <li key={u.id} className="flex items-center gap-3 py-2.5 text-[14px]">
+                      <span className="w-3 text-fg-subtle tabular-nums">{i + 1}</span>
+                      <Avatar name={u.name} avatarId={u.avatarId} size={26} />
                       <span className="min-w-0 flex-1 truncate text-fg">{u.name}</span>
-                      <span className="tabular-nums text-fg-muted">{u.xp.toLocaleString()}</span>
+                      <span className="text-fg-muted tabular-nums">{u.xp.toLocaleString()}</span>
                     </li>
                   ))}
-                </ul>
+                </ol>
               </div>
             </div>
+
+            {/* Filler under the fade: the signs grid, the next thing on the real page. */}
+            <div className="grid grid-cols-9 gap-2 border-t border-line px-6 py-7 sm:grid-cols-12 sm:px-10 lg:grid-cols-[repeat(18,minmax(0,1fr))]">
+              {SIGNS.map((s, k) => (
+                <span key={s} className={`h-9 rounded-md ${k < stats.mastered ? "bg-[#efeff1]" : "border border-line"}`} />
+              ))}
+            </div>
           </div>
-        </div>
-        <p className="mt-3 text-center text-xs text-fg-subtle">
-          Live preview built from the app&apos;s own components, using a demo learner&apos;s practice data.
+        </StageWindow>
+        <p className="mt-2 text-center text-[12px] text-fg-subtle">
+          Built from the app&apos;s own components, with {learner.name.split(" ")[0]}&apos;s practice data. {learner.name.split(" ")[0]} is a demo learner.
         </p>
       </Reveal>
     </section>
