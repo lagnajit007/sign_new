@@ -36,7 +36,7 @@ export default function HowItWorks() {
     <section id="how-it-works" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
             <Zap className="w-4 h-4" />
             How It Works
           </div>
@@ -55,7 +55,7 @@ export default function HowItWorks() {
               <div
                 key={step.title}
                 data-reveal-child
-                className="relative bg-surface rounded-2xl p-8 border border-brand-soft shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1"
+                className="relative bg-surface rounded-2xl p-8 border border-brand-soft shadow-card hover:shadow-card-hover transition duration-300 hover:-translate-y-1"
               >
                 <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-brand text-white text-lg font-bold mb-6">
                   {i + 1}

@@ -14,8 +14,8 @@ const features = [
   },
   {
     icon: Brain,
-    title: "AI-Powered Feedback",
-    description: "Advanced computer vision analyzes hand shape, position, and movement for accurate feedback.",
+    title: "Feedback on every sign",
+    description: "A trained model reads 21 points on your hand and names the sign it sees, with a confidence score.",
     color: "text-success",
     bg: "bg-success/10",
   },
@@ -57,7 +57,7 @@ export default function Features() {
     <section id="features" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
             <Sparkles className="w-4 h-4" />
             Features
           </div>
@@ -75,7 +75,7 @@ export default function Features() {
             return (
               <div
                 key={feature.title}
-                className="bg-surface rounded-2xl p-6 border border-brand-soft shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-0.5"
+                className="bg-surface rounded-2xl p-6 border border-brand-soft shadow-card hover:shadow-card-hover transition duration-300 hover:-translate-y-0.5"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${feature.bg}`}>
                   <Icon className={`w-6 h-6 ${feature.color}`} />

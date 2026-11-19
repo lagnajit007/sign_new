@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#FAF7FF]">
+    <div data-surface="marketing" className="min-h-screen bg-[#FAF7FF]">
       <div className="max-w-3xl mx-auto px-4 py-16">
         <Link href="/sign-in" className="text-[#7D54FF] text-sm hover:underline mb-8 inline-block">&larr; Back</Link>
         <h1 className="text-3xl font-bold text-[#2D1B69] mb-6">Privacy Policy</h1>

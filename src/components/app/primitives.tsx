@@ -28,7 +28,7 @@ export function Panel({
   as?: "section" | "div" | "article";
 }) {
   return (
-    <Tag className={cn("min-w-0 rounded-xl border border-line bg-panel", className)}>
+    <Tag className={cn("min-w-0 animate-sj-enter rounded-xl border border-line bg-panel", className)}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0">
@@ -57,7 +57,7 @@ export function Stat({
   trend?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col justify-between gap-3 rounded-xl border border-line bg-panel p-4">
+    <div className="flex min-w-0 animate-sj-enter flex-col justify-between gap-3 rounded-xl border border-line bg-panel p-4">
       <div className="flex items-center justify-between gap-2 text-xs text-fg-muted">
         <span className="flex items-center gap-1.5 truncate">
           {icon && <span className="text-fg-subtle [&_svg]:size-3.5">{icon}</span>}
@@ -115,7 +115,11 @@ export function ProgressBar({ value, className, label }: { value: number; classN
       aria-label={label}
       className={cn("h-1.5 w-full overflow-hidden rounded-full bg-subtle", className)}
     >
-      <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      {/* scaleX instead of width: compositor-only, no layout per frame */}
+      <div
+        className="h-full origin-left rounded-full bg-brand transition-transform duration-500"
+        style={{ transform: `scaleX(${pct / 100})` }}
+      />
     </div>
   );
 }

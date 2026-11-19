@@ -17,7 +17,7 @@ export default function WhySanjogExists() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+            <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
               <Heart className="w-4 h-4" />
               Why Sanjog Exists
             </div>

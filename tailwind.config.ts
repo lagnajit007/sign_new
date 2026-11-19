@@ -68,13 +68,8 @@ const config: Config = {
         ink: "#2D1B69",     // Text primary
         "ink-soft": "#625D77", // Text secondary — AA on white and page background
       },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        xl: "24px",
-        "2xl": "32px",
-      },
+      // Radius scale comes from Tailwind v4 defaults (see globals.css):
+      // md 6px · lg 8px controls · xl 12px panels · 2xl 16px · 3xl 24px media.
       boxShadow: {
         card: "0 8px 24px rgba(125,84,255,0.08)",
         "card-hover": "0 12px 32px rgba(125,84,255,0.12)",

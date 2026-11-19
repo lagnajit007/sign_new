@@ -16,7 +16,9 @@
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "db:deploy": "prisma migrate deploy",
     "typecheck": "tsc --noEmit",
-    "test:backend": "python -m pytest backend/tests -q"
+    "test:backend": "python -m pytest backend/tests -q",
+    "test:model": "node --import tsx scripts/test-recognizer.ts",
+    "export:model": "python backend/export_model.py"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.18.0",

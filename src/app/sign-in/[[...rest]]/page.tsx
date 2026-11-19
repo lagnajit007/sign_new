@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function SignInPage() {
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#FAF7FF]">
+    <div data-surface="marketing" className="flex flex-col md:flex-row min-h-screen bg-[#FAF7FF]">
       {/* Left Image Section */}
       <div
         className="hidden md:flex md:w-1/2 relative p-3"
@@ -67,7 +67,7 @@ export default function SignInPage() {
                   card: "shadow-none border-0",
                   header: "hidden",
                   formFieldInput:
-                    "border border-gray-200 rounded-lg p-2 focus:border-[#7D54FF] focus:ring-1 focus:ring-[#7D54FF] transition-all",
+                    "border border-gray-200 rounded-lg p-2 focus:border-[#7D54FF] focus:ring-1 focus:ring-[#7D54FF] transition",
                   formButtonPrimary:
                     "bg-gradient-to-r from-[#7D54FF] to-[#9B7CFF] text-white rounded-lg font-medium py-2 hover:opacity-90 transition-opacity",
                   socialButtonsBlockButton:

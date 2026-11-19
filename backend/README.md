@@ -1,24 +1,15 @@
----
-title: Sanjog Recognition
-emoji: 🤟
-colorFrom: purple
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
+# Sanjog model and reference backend
 
-# Sanjog recognition backend
+The sign classifier (`models/model.p`, a scikit-learn MLP: 42 hand-shape
+features → 36 signs, A–Z and 0–9) lives here.
 
-Flask service that classifies 42 normalised hand-landmark values into a sign
-(A–Z, 0–9) and returns an HMAC-signed prediction.
+**Production does not deploy this folder.** The web app runs the same model
+itself: `export_model.py` writes the weights to `src/lib/recognizer/model.json`,
+which is used in the browser for instant feedback and in `/api/attempts` to
+verify each result before awarding XP.
 
-This folder is deployed as a Hugging Face Space (Docker SDK). The YAML header
-above is read by Hugging Face; see `../DEPLOYMENT.md` for setup steps.
+- `export_model.py`: export weights and parity fixtures after retraining (`npm run export:model`)
+- `app.py`: Flask reference server (`/predict`), handy for experiments
+- `tests/`: pytest suite for the reference server (`npm run test:backend`)
 
-Required Space secrets:
-
-| Name | Value |
-| --- | --- |
-| `FRONTEND_ORIGIN` | Your Vercel URL, e.g. `https://sanjog.vercel.app` |
-| `RECOGNITION_SIGNING_SECRET` | Same random value as in Vercel |
+Parity between Python and TypeScript is checked by `npm run test:model`.

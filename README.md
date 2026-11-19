@@ -51,7 +51,7 @@ python app2.py                # → http://localhost:5000
 See `.env.example` for the full list. Required:
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` — from Clerk dashboard
 - `DATABASE_URL` + `DIRECT_URL` — from Supabase project settings
-- `NEXT_PUBLIC_RECOGNITION_API_URL` — Flask backend URL (default: `http://127.0.0.1:5000`)
+- Sign recognition runs inside the app (`src/lib/recognizer`); no recognition server URL is needed
 
 ---
 

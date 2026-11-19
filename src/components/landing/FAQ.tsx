@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion"
 const faqs = [
   {
     q: "What is Sanjog?",
-    a: "Sanjog is an AI-powered sign language learning platform. It uses your webcam and computer vision technology to recognize your hand gestures in real-time, giving instant feedback on your signing accuracy.",
+    a: "Sanjog is a free practice tool for the sign language alphabet (A–Z) and numbers (0–9). You make a sign in front of your webcam and it tells you, instantly, which sign it sees and how confident it is.",
   },
   {
     q: "How does AI recognition work?",
@@ -33,7 +33,7 @@ const faqs = [
   },
   {
     q: "Is my camera footage stored?",
-    a: "No. Your video is never recorded, stored or uploaded. Hand tracking runs in your browser with TensorFlow.js; only 42 numbers describing your hand’s shape are sent to the recognition service, and only the result is saved to your account.",
+    a: "No. Your video is never recorded, stored or uploaded. Hand tracking and recognition run in your browser. When you complete a sign, 42 numbers describing your hand’s shape are sent to Sanjog to verify it, and only the result is saved to your account.",
   },
 ]
 
@@ -42,7 +42,7 @@ function FAQItem({ item, index }: { item: typeof faqs[0]; index: number }) {
 
   return (
     <div
-      className="border border-brand-soft rounded-2xl overflow-hidden bg-surface transition-all duration-200 hover:shadow-card"
+      className="border border-brand-soft rounded-2xl overflow-hidden bg-surface transition duration-200 hover:shadow-card"
     >
       <button
         onClick={() => setOpen(!open)}
@@ -83,7 +83,7 @@ export default function FAQ() {
     <section id="faq" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-bg">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
             <HelpCircle className="w-4 h-4" />
             FAQ
           </div>

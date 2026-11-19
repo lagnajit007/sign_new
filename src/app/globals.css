@@ -52,6 +52,28 @@
   --color-negative-tint: var(--sj-negative-tint);
   --font-display: var(--font-geist), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Radius scale (Tailwind v4 defaults, restated so they're a contract):
+     controls rounded-lg, panels rounded-xl, large surfaces rounded-2xl,
+     media rounded-3xl, pills/avatars rounded-full. */
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  /* Motion tokens. Every `transition` utility uses these unless overridden.
+     Animate transform/opacity/colour only — never layout properties. */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+  --default-transition-duration: 160ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-sj-enter: sj-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sj-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 
 :root {
@@ -61,16 +83,16 @@
   --sj-subtle-hover: #ececee;
   --sj-fg: #18181b;
   --sj-fg-muted: #52525b;
-  --sj-fg-subtle: #71717a;
+  --sj-fg-subtle: #67676f;
   --sj-line: #e8e8eb;
   --sj-line-strong: #d4d4d8;
-  --sj-brand: #6d4aff;
-  --sj-brand-hover: #7c5cff;
+  --sj-brand: #5b35f0;
+  --sj-brand-hover: #6d4aff;
   --sj-brand-fg: #ffffff;
-  --sj-brand-tint: color-mix(in oklab, #6d4aff 10%, transparent);
-  --sj-positive: #15803d;
+  --sj-brand-tint: color-mix(in oklab, #5b35f0 10%, transparent);
+  --sj-positive: #166534;
   --sj-positive-tint: color-mix(in oklab, #16a34a 12%, transparent);
-  --sj-caution: #b45309;
+  --sj-caution: #9a4508;
   --sj-caution-tint: color-mix(in oklab, #d97706 13%, transparent);
   --sj-negative: #dc2626;
   --sj-negative-tint: color-mix(in oklab, #dc2626 11%, transparent);
@@ -103,9 +125,9 @@
    so the layer class carries the same palette). */
 .obsidian-dashboard-shell,
 .obsidian-dashboard-shell-layer {
-  --obsidian-dashboard-shell-accent: #6d4aff;
-  --obsidian-dashboard-shell-accent-hover: #7c5cff;
-  --obsidian-dashboard-shell-accent-shadow: 0 2px 4px rgb(109 74 255 / 0.24), 0 0 0 1px #5a37f0, inset 0 4px 6px rgb(255 255 255 / 0.2),
+  --obsidian-dashboard-shell-accent: #5b35f0;
+  --obsidian-dashboard-shell-accent-hover: #6d4aff;
+  --obsidian-dashboard-shell-accent-shadow: 0 2px 4px rgb(91 53 240 / 0.24), 0 0 0 1px #4a26d9, inset 0 4px 6px rgb(255 255 255 / 0.2),
     inset 0 0 0 1px rgb(255 255 255 / 0.15), inset 0 -8px 14px rgb(0 0 0 / 0.15);
 }
 .dark .obsidian-dashboard-shell,
@@ -128,8 +150,8 @@ html[data-font-scale] {
   body {
     @apply bg-background text-foreground;
   }
-  /* Friendly, rounded headings per design system */
-  h1, h2, h3, h4, h5, h6, .font-heading {
+  /* Poppins is the marketing display face only; the app uses Inter/Geist. */
+  [data-surface="marketing"] :is(h1, h2, h3, h4, h5, h6), .font-heading {
     font-family: var(--font-heading), Poppins, var(--font-sans), sans-serif;
   }
 }
@@ -224,6 +246,7 @@ html {
   html {
     scroll-behavior: auto;
   }
+  .animate-sj-enter { animation: none; }
   
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

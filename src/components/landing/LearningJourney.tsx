@@ -40,7 +40,7 @@ export default function LearningJourney() {
     <section id="learning-journey" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
             <BookOpen className="w-4 h-4" />
             Learning Journey
           </div>
@@ -57,7 +57,7 @@ export default function LearningJourney() {
             <Link
               key={path.title}
               href={path.href}
-              className="group relative bg-surface rounded-2xl p-8 border border-brand-soft shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 overflow-hidden"
+              className="group relative bg-surface rounded-2xl p-8 border border-brand-soft shadow-card hover:shadow-card-hover transition duration-300 hover:-translate-y-1 overflow-hidden"
             >
               <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${path.gradient} opacity-5 rounded-full -translate-y-1/2 translate-x-1/2`} />
               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${path.gradient} flex items-center justify-center text-white text-xl font-bold mb-5`}>
@@ -80,7 +80,7 @@ export default function LearningJourney() {
         <div className="text-center mt-12" data-reveal-child>
           <Link
             href="/dashboard/lessons"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition hover:scale-[1.02]"
           >
             View All Lessons <ChevronRight className="w-4 h-4" />
           </Link>

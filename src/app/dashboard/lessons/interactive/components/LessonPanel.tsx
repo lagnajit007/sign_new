@@ -45,7 +45,7 @@ export default function LessonPanel({
                 {lessonType === 'alphabet' ? 'Alphabet' : 'Number'} Lesson
               </span>
             </div>
-            <h1 className="text-3xl lg:text-4xl font-black text-fg">
+            <h1 className="font-display text-2xl lg:text-3xl font-semibold tracking-tight text-fg">
               Sign for <span className="text-brand">"{targetSign}"</span>
             </h1>
             <p className="text-sm text-fg-subtle mt-1">{description}</p>
@@ -110,10 +110,10 @@ export default function LessonPanel({
           </div>
           <div className="h-3 bg-brand-tint rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-brand to-brand-hover rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.round(progress)}%` }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="h-full origin-left bg-brand rounded-full"
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: Math.round(progress) / 100 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             />
           </div>
           <div className="flex justify-between mt-1">

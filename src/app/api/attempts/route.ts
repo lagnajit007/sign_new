@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateUser } from '@/lib/user';
 import { computeUserStats } from '@/lib/stats';
@@ -12,7 +11,7 @@ import {
   RECOGNITION_CONFIDENCE_THRESHOLD,
 } from '@/lib/gamification';
 import { serverScoringEnabled } from '@/lib/scoring-policy';
-import { verifyRecognition } from '@/lib/recognition-signature';
+import { isValidFeatures, recognize } from '@/lib/recognizer';
 import { challengeCount, periodStart } from '@/lib/challenges';
 import { apiError } from '@/lib/api';
 
@@ -29,17 +28,14 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 interface AttemptBody {
   signLabel?: unknown;
   lessonType?: unknown;
-  predictedLabel?: unknown;
-  confidence?: unknown;
-  issuedAt?: unknown;
-  nonce?: unknown;
-  signature?: unknown;
+  /** 42 hand-shape features (see landmarksToFeatures). */
+  features?: unknown;
 }
 
 /**
- * Record a recognition attempt. The attempt is always logged; XP, streak,
- * mastery, achievements and challenges are only awarded when scoring is enabled
- * and the result carries a valid signature from the recognition backend.
+ * Record a recognition attempt. The client sends the hand-shape features, not a
+ * verdict: the server runs the recognizer itself, so the result (and any XP)
+ * can't be forged. Attempts are always logged; rewards require scoring to be on.
  */
 export async function POST(request: Request) {
   try {
@@ -54,19 +50,15 @@ export async function POST(request: Request) {
       return apiError('Invalid JSON body', 400);
     }
 
-    const { signLabel, lessonType, predictedLabel, confidence } = body;
+    const { signLabel, lessonType, features } = body;
     const allowed = lessonType === 'alphabet' ? ALPHABET : lessonType === 'number' ? NUMBERS : [];
-    // The model can predict any of A–Z/0–9 regardless of the lesson.
-    const anyLabel = [...ALPHABET, ...NUMBERS];
-    if (
-      typeof signLabel !== 'string' ||
-      typeof lessonType !== 'string' ||
-      typeof predictedLabel !== 'string' ||
-      typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1 ||
-      !allowed.includes(signLabel) || !anyLabel.includes(predictedLabel)
-    ) {
+    if (typeof signLabel !== 'string' || typeof lessonType !== 'string' || !allowed.includes(signLabel)) {
       return apiError('Missing or invalid attempt fields', 400);
     }
+    if (!isValidFeatures(features)) {
+      return apiError('features must be 42 hand-shape values between 0 and 1', 400);
+    }
+    const { prediction: predictedLabel, confidence } = recognize(features);
 
     // Simple per-user rate limit backed by the attempts table (works on serverless).
     const recent = await prisma.recognitionAttempt.count({
@@ -74,24 +66,16 @@ export async function POST(request: Request) {
     });
     if (recent >= RATE_LIMIT_COUNT) return apiError('Too many attempts, slow down a little', 429);
 
-    const verification = verifyRecognition({
-      predictedLabel,
-      confidence,
-      issuedAt: typeof body.issuedAt === 'number' ? body.issuedAt : undefined,
-      nonce: typeof body.nonce === 'string' ? body.nonce : undefined,
-      signature: typeof body.signature === 'string' ? body.signature : undefined,
-    });
-    const scoring = serverScoringEnabled() && verification.ok;
-    const nonce = verification.ok ? (body.nonce as string) : null;
+    const scoring = serverScoringEnabled();
 
     const correct = predictedLabel === signLabel && confidence >= RECOGNITION_CONFIDENCE_THRESHOLD;
     const now = new Date();
 
     const result = await prisma.$transaction(
       async (tx) => {
-        // 1) Learning log. The unique nonce makes a signed result redeemable once.
+        // 1) Learning log.
         await tx.recognitionAttempt.create({
-          data: { userId: user.id, signLabel, lessonType, predictedLabel, confidence, correct, nonce },
+          data: { userId: user.id, signLabel, lessonType, predictedLabel, confidence, correct },
         });
 
         if (!scoring) return null;
@@ -215,20 +199,11 @@ export async function POST(request: Request) {
     );
 
     if (!result) {
-      return NextResponse.json({
-        error: null,
-        scoringEnabled: false,
-        reason: serverScoringEnabled() ? verification.ok ? null : verification.reason : 'disabled',
-        correct,
-        xpGained: 0,
-      });
+      return NextResponse.json({ error: null, scoringEnabled: false, correct, predictedLabel, confidence, xpGained: 0 });
     }
 
-    return NextResponse.json({ error: null, scoringEnabled: true, correct, ...result });
+    return NextResponse.json({ error: null, scoringEnabled: true, correct, predictedLabel, confidence, ...result });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      return apiError('This recognition result was already recorded', 409);
-    }
     console.error('[api/attempts] failed', err);
     return apiError('Failed to record attempt', 500);
   }

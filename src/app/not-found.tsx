@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
+    <div data-surface="marketing" className="min-h-screen flex items-center justify-center bg-white">
       <div className="text-center p-8 max-w-md">
         <div className="text-[#7D54FF] text-6xl mb-6">🔍</div>
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Page Not Found</h1>

@@ -188,8 +188,9 @@ export default function SettingsPage() {
 
       <Panel title="Camera & data">
         <p className="text-[13px] leading-relaxed text-fg-muted">
-          Video never leaves your browser. Hand tracking runs on your device; only 42 numbers describing your hand&apos;s
-          shape are sent to the recognition service, and only the result (sign, confidence, time) is saved to your account.
+          Video never leaves your browser. Hand tracking and sign recognition run on your device. When you finish a sign,
+          42 numbers describing your hand&apos;s shape are sent to Sanjog to double-check the result, and only the outcome
+          (sign, confidence, time) is saved to your account.
         </p>
       </Panel>
     </PageBody>

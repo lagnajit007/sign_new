@@ -19,46 +19,25 @@ import {
   LevelUpCelebration,
 } from "@/components/loaders/ProcessLoaders";
 
-import { HandTrackingAPIClient, type BackendStatus, type SignedPrediction } from "@/utils/HandTrackingAPIClient";
-import { RECOGNITION_API_URL } from "@/lib/config";
+import { landmarksToFeatures, recognize } from "@/lib/recognizer";
 import { SCORING_UNAVAILABLE_BANNER } from "@/lib/scoring-policy";
 
 // ─── Constants ───
-const BACKEND_URL = RECOGNITION_API_URL;
-const apiClient = BACKEND_URL ? new HandTrackingAPIClient(BACKEND_URL) : null;
-
 const ALPHABET_LESSONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const NUMBER_LESSONS = "0123456789".split("");
 
 const RECOGNITION_CONFIDENCE_THRESHOLD = 0.7;
 const CONSECUTIVE_MATCHES_NEEDED = 3;
-// Hand detection runs locally on each tick; the backend is only called when a
-// hand is visible and no request is in flight (see HandTrackingAPIClient).
+// Hand tracking and sign recognition both run in the browser on each tick.
 const DETECTION_INTERVAL = 200;
 
-const BACKEND_ERROR_MESSAGE =
-  "We can't reach the recognition service right now. Please try again in a minute.";
-const BACKEND_WAKING_MESSAGE =
-  "Waking up the recognizer. The free server sleeps when idle, so this can take up to a minute.";
+/** Log at most one missed attempt per sign in this window (feeds "Needs practice"). */
+const MISS_LOG_INTERVAL_MS = 15000;
 
 // ─── Utility functions ───
 const generateSVG = (text: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img" aria-label="Sign for ${text}"><rect width="100%" height="100%" fill="#FAF7FF" /><text x="50%" y="50%" font-family="Arial" font-size="120" font-weight="bold" fill="#7D54FF" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img" aria-label="Sign for ${text}"><rect width="100%" height="100%" fill="#F4F4F5" /><text x="50%" y="50%" font-family="system-ui, sans-serif" font-size="120" font-weight="600" fill="#5B35F0" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-};
-
-/**
- * Match the training pipeline (MediaPipe): coordinates are normalised to the
- * frame (0..1), then the hand's minimum x/y is subtracted. handpose returns
- * pixel coordinates, so divide by the video's intrinsic size first.
- */
-const preprocessLandmarks = (landmarks: number[][], width: number, height: number): number[] => {
-  if (!landmarks || landmarks.length !== 21 || !width || !height) return [];
-  const xs = landmarks.map((l) => l[0] / width);
-  const ys = landmarks.map((l) => l[1] / height);
-  const minX = Math.min(...xs);
-  const minY = Math.min(...ys);
-  return xs.flatMap((x, i) => [x - minX, ys[i] - minY]);
 };
 
 const devErr = process.env.NODE_ENV !== "production" ? console.error.bind(console, "[lesson]") : () => {};
@@ -73,8 +52,6 @@ export default function InteractiveLessonPage() {
   //  Model state 
   const [modelLoaded, setModelLoaded] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
-  const [backendStatus, setBackendStatus] = useState<BackendStatus | null>(null);
-  const backendConnected = backendStatus === "online";
   const [scoringDisabled, setScoringDisabled] = useState(false);
 
   //  Lesson state 
@@ -85,7 +62,7 @@ export default function InteractiveLessonPage() {
   const [lessonStatus, setLessonStatus] = useState<"idle" | "practicing" | "complete">("idle");
 
   //  Recognition state 
-  const [predictionResult, setPredictionResult] = useState<SignedPrediction | null>(null);
+  const [predictionResult, setPredictionResult] = useState<{ prediction: string; confidence: number } | null>(null);
   const [consecutiveMatches, setConsecutiveMatches] = useState(0);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>("idle");
   const [feedbackMessage, setFeedbackMessage] = useState("Enable your camera and start practicing to receive feedback");
@@ -107,8 +84,7 @@ export default function InteractiveLessonPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const recordedSignRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
-  const backendStatusRef = useRef<BackendStatus | null>(null);
-  backendStatusRef.current = backendStatus;
+  const lastMissLogRef = useRef<Map<string, number>>(new Map());
 
   const currentLessons = lessonType === "alphabet" ? ALPHABET_LESSONS : NUMBER_LESSONS;
 
@@ -158,25 +134,6 @@ export default function InteractiveLessonPage() {
     setLessonType(set);
     setCurrentIndex(idx >= 0 ? idx : 0);
   }, []);
-
-  //  Backend health: poll quickly while the free host wakes up, slowly once online
-  const checkBackend = useCallback(async () => {
-    if (!apiClient) { setBackendStatus("offline"); return; }
-    const status = await apiClient.checkStatus();
-    if (isMountedRef.current) setBackendStatus(status);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const loop = async () => {
-      await checkBackend();
-      if (cancelled) return;
-      timer = setTimeout(loop, backendStatusRef.current === "online" ? 60000 : 5000);
-    };
-    loop();
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [checkBackend]);
 
   //  Camera: Start 
   const startCamera = useCallback(async () => {
@@ -345,8 +302,8 @@ export default function InteractiveLessonPage() {
   //  Record attempt 
   const recordAttempt = useCallback(async (attempt: {
     signLabel: string; lessonType: "alphabet" | "number";
-    predictedLabel: string; confidence: number; correct: boolean;
-    issuedAt: number; nonce: string; signature: string | null;
+    /** Hand-shape features; the server re-runs recognition on them. */
+    features: number[];
   }) => {
     try {
       const res = await fetch("/api/attempts", {
@@ -406,21 +363,9 @@ export default function InteractiveLessonPage() {
 
           try {
             const video = videoRef.current;
-            const processed = preprocessLandmarks(rawLandmarks, video.videoWidth, video.videoHeight);
-            if (processed.length === 0) return;
-
-            if (!BACKEND_URL || !apiClient) {
-              setFeedbackType("error");
-              setFeedbackMessage("Recognition service is not configured for this environment. Please contact support.");
-              return;
-            }
-            if (!backendConnected) {
-              setFeedbackType("error");
-              setFeedbackMessage(backendStatus === "waking" ? BACKEND_WAKING_MESSAGE : BACKEND_ERROR_MESSAGE);
-              return;
-            }
-            const result = await apiClient.predict(processed);
-            if (!active || !result) return;
+            const features = landmarksToFeatures(rawLandmarks, video.videoWidth, video.videoHeight);
+            if (!features) return;
+            const result = recognize(features);
 
             setPredictionResult(result);
 
@@ -440,11 +385,7 @@ export default function InteractiveLessonPage() {
               if (consecutiveMatches >= CONSECUTIVE_MATCHES_NEEDED - 1) {
                 if (recordedSignRef.current !== targetSign) {
                   recordedSignRef.current = targetSign;
-                  void recordAttempt({
-                    signLabel: targetSign, lessonType,
-                    predictedLabel: result.prediction, confidence, correct: true,
-                    issuedAt: result.issuedAt, nonce: result.nonce, signature: result.signature,
-                  });
+                  void recordAttempt({ signLabel: targetSign, lessonType, features });
                 }
                 setProgress((prev) => {
                   const next = Math.min(prev + 5, 100);
@@ -464,6 +405,12 @@ export default function InteractiveLessonPage() {
             } else {
               setConsecutiveMatches(0);
               if (result.prediction && result.prediction !== targetSign) {
+                // A confident wrong sign is a real attempt worth remembering.
+                const last = lastMissLogRef.current.get(targetSign) ?? 0;
+                if (confidence >= RECOGNITION_CONFIDENCE_THRESHOLD && Date.now() - last > MISS_LOG_INTERVAL_MS) {
+                  lastMissLogRef.current.set(targetSign, Date.now());
+                  void recordAttempt({ signLabel: targetSign, lessonType, features });
+                }
                 setFeedbackType("incorrect");
                 setFeedbackMessage(`Make the "${targetSign}" sign — detected "${result.prediction}" instead. Keep your hand centered.`);
               } else {
@@ -472,15 +419,9 @@ export default function InteractiveLessonPage() {
               }
               setProgress((prev) => Math.max(prev - 0.5, 0));
             }
-          } catch (err: unknown) {
-            if (err instanceof TypeError || (err as Error)?.name === "AbortError") {
-              setBackendStatus("offline");
-              setFeedbackType("error");
-              setFeedbackMessage(BACKEND_ERROR_MESSAGE);
-            } else {
-              setFeedbackType("error");
-              setFeedbackMessage("Recognition error. Please try again.");
-            }
+          } catch {
+            setFeedbackType("error");
+            setFeedbackMessage("Recognition error. Please try again.");
           }
         } else {
           if (lastLandmarks) {
@@ -504,7 +445,7 @@ export default function InteractiveLessonPage() {
         detectionIntervalRef.current = null;
       }
     };
-  }, [cameraState, lessonStatus, modelLoaded, targetSign, currentIndex, currentLessons, backendConnected, backendStatus, consecutiveMatches, recordAttempt, lessonType]);
+  }, [cameraState, lessonStatus, modelLoaded, targetSign, currentIndex, currentLessons, consecutiveMatches, recordAttempt, lessonType]);
 
   //  Hand landmark drawing 
   const drawHandLandmarks = (ctx: CanvasRenderingContext2D, landmarks: number[][]) => {
@@ -626,7 +567,7 @@ export default function InteractiveLessonPage() {
       <div ref={containerRef} className="flex h-full min-h-[640px] bg-canvas overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Navigation */}
-          <header className="bg-panel px-4 lg:px-6 py-3 flex items-center justify-between border-b border-line shrink-0">
+          <header className="px-4 lg:px-6 pt-4 pb-2 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" href="/dashboard/lessons" icon={ArrowLeft}>
                 Back to Lessons
@@ -674,24 +615,9 @@ export default function InteractiveLessonPage() {
             />
           )}
 
-          {/* Backend status banners */}
-          {backendStatus === "waking" && (
-            <div role="status" className="bg-amber-50 border-b border-amber-200 px-4 lg:px-6 py-2 flex items-center gap-2 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" aria-hidden />
-              <p className="text-sm text-amber-800">{BACKEND_WAKING_MESSAGE}</p>
-            </div>
-          )}
-          {backendStatus === "offline" && (
-            <div role="alert" className="bg-red-50 border-b border-red-200 px-4 lg:px-6 py-2 flex items-center gap-2 shrink-0">
-              <p className="text-sm text-red-700">{BACKEND_ERROR_MESSAGE}</p>
-              <Button variant="ghost" size="sm" onClick={() => { setBackendStatus(null); void checkBackend(); }}>
-                Retry
-              </Button>
-            </div>
-          )}
           {scoringDisabled && (
-            <div role="status" className="bg-slate-50 border-b border-slate-200 px-4 lg:px-6 py-2 shrink-0">
-              <p className="text-sm text-slate-700">{SCORING_UNAVAILABLE_BANNER}</p>
+            <div role="status" className="mx-4 lg:mx-6 mb-2 rounded-lg border border-line bg-subtle px-3 py-2 shrink-0">
+              <p className="text-sm text-fg-muted">{SCORING_UNAVAILABLE_BANNER}</p>
             </div>
           )}
 
@@ -704,9 +630,9 @@ export default function InteractiveLessonPage() {
 
           {/* Main Content */}
           {!isModelLoading && (
-            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden px-4 lg:px-6 pb-4">
               {/* Left Panel - Lesson Info */}
-              <div className="w-full lg:w-1/2 border-r border-line bg-panel overflow-hidden">
+              <div className="w-full lg:w-1/2 rounded-xl border border-line bg-panel overflow-hidden animate-sj-enter">
                 <LessonPanel
                   targetSign={targetSign}
                   lessonType={lessonType}
@@ -728,7 +654,7 @@ export default function InteractiveLessonPage() {
               </div>
 
               {/* Right Panel - Webcam + Feedback */}
-              <div className="w-full lg:w-1/2 bg-zinc-950 flex flex-col overflow-hidden">
+              <div className="w-full lg:w-1/2 rounded-xl bg-zinc-950 flex flex-col overflow-hidden animate-sj-enter">
                 <div className="flex-1 p-3 lg:p-4 flex flex-col gap-3">
                   {/* Recognition Status Bar */}
                   {cameraState === "active" && lessonStatus === "practicing" && (
@@ -780,7 +706,7 @@ export default function InteractiveLessonPage() {
                     )}
                     {cameraState === "active" && predictionResult && (
                       <div
-                        className="absolute bottom-20 right-3 z-10 text-white text-4xl font-black px-4 py-2 rounded-lg shadow-lg transition-all duration-300"
+                        className="absolute bottom-20 right-3 z-10 text-white text-4xl font-black px-4 py-2 rounded-lg shadow-lg transition duration-300"
                         style={{
                           backgroundColor: predictionResult.prediction === targetSign ? "#22C55E" : "#7D54FF",
                           opacity: predictionResult.confidence > 0.5 ? 1 : 0.6,
@@ -838,10 +764,10 @@ export default function InteractiveLessonPage() {
                         <span>Progress</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
-                      <div className="h-2 bg-panel/10 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-brand to-brand-hover rounded-full transition-all duration-300"
-                          style={{ width: `${Math.round(progress)}%` }}
+                          className="h-full origin-left bg-brand rounded-full transition-transform duration-300"
+                          style={{ transform: `scaleX(${Math.round(progress) / 100})` }}
                         />
                       </div>
                     </div>

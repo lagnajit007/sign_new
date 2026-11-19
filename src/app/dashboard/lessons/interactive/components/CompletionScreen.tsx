@@ -64,7 +64,7 @@ export default function CompletionScreen({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', damping: 15 }}
-            className="w-20 h-20 rounded-full bg-panel/20 mx-auto mb-3 flex items-center justify-center"
+            className="w-20 h-20 rounded-full bg-white/20 mx-auto mb-3 flex items-center justify-center"
           >
             <Trophy className="w-10 h-10" />
           </motion.div>
@@ -108,14 +108,6 @@ export default function CompletionScreen({
           <div className="flex justify-between text-xs text-fg-subtle mb-1">
             <span>Total XP</span>
             <span>{totalXp} XP</span>
-          </div>
-          <div className="h-2 bg-brand-tint rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: '100%' }}
-              transition={{ delay: 0.6, duration: 0.8, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-brand to-brand-hover rounded-full"
-            />
           </div>
         </div>
 

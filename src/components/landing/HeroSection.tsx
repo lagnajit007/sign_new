@@ -24,10 +24,9 @@ export default function HeroSection() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="text-center lg:text-left">
-            <div className="hero-title inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-6">
-              <span className="w-2 h-2 bg-brand rounded-full animate-pulse" />
-              AI-Powered Learning
-            </div>
+            <p className="hero-title text-brand text-sm font-semibold tracking-wide mb-5">
+              Fingerspelling · A–Z and 0–9
+            </p>
 
             <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl font-bold text-ink leading-tight mb-6">
               Learn Sign Language With{" "}
@@ -35,8 +34,8 @@ export default function HeroSection() {
             </h1>
 
             <p className="hero-subtitle text-lg text-ink-soft max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-              Practice sign language through your webcam, receive instant AI-powered feedback,
-              track progress, unlock achievements, and build communication skills.
+              Hold up your hand, make a letter, and Sanjog tells you right away whether it reads the sign,
+              and how sure it is. Free, in your browser, no special hardware.
             </p>
 
             <div className="hero-cta flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
@@ -51,13 +50,13 @@ export default function HeroSection() {
               <SignedIn>
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-brand text-white rounded-full text-base font-semibold hover:bg-brand-dark transition-all hover:scale-[1.03] shadow-btn"
+                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-brand text-white rounded-full text-base font-semibold hover:bg-brand-dark transition hover:scale-[1.03] shadow-btn"
                 >
                   Go to Dashboard
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </SignedIn>
-              <a href="#how-it-works" className="inline-flex items-center gap-2 px-8 py-3.5 text-ink border-2 border-brand-soft rounded-full text-base font-medium hover:border-brand hover:text-brand transition-all hover:scale-[1.02]">
+              <a href="#how-it-works" className="inline-flex items-center gap-2 px-8 py-3.5 text-ink border-2 border-brand-soft rounded-full text-base font-medium hover:border-brand hover:text-brand transition hover:scale-[1.02]">
                 <Play className="w-4 h-4" />
                 See how it works
               </a>

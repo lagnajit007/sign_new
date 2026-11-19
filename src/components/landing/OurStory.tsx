@@ -51,7 +51,7 @@ export default function OurStory() {
     <section id="story" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
             <GraduationCap className="w-4 h-4" />
             Our Story
           </div>
@@ -74,7 +74,7 @@ export default function OurStory() {
                   <div className={`hidden md:flex absolute left-4 w-9 h-9 rounded-xl items-center justify-center ${m.bg} border ${m.border} -translate-x-1/2`}>
                     <Icon className={`w-4 h-4 ${m.color}`} />
                   </div>
-                  <div className="bg-bg rounded-2xl p-6 border border-brand-soft shadow-card hover:shadow-card-hover transition-all duration-300">
+                  <div className="bg-bg rounded-2xl p-6 border border-brand-soft shadow-card hover:shadow-card-hover transition duration-300">
                     <div className="flex items-center gap-3 mb-3">
                       <div className={`md:hidden w-9 h-9 rounded-xl flex items-center justify-center ${m.bg}`}>
                         <Icon className={`w-4 h-4 ${m.color}`} />

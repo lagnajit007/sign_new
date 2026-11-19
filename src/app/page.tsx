@@ -19,7 +19,7 @@ export default async function LandingPage() {
   if (userId) redirect("/dashboard")
 
   return (
-    <div className="min-h-screen bg-white">
+    <div data-surface="marketing" className="min-h-screen bg-white">
       <a
         href="#main-content"
         className="sr-only fixed left-4 top-4 z-[60] rounded-md bg-brand px-4 py-2 font-semibold text-white focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"

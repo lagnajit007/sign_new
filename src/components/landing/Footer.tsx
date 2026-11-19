@@ -31,7 +31,7 @@ export default function Footer() {
           <div className="sm:col-span-2 lg:col-span-1">
             <Image src="/sanjog-logo.svg" alt="Sanjog" width={110} height={36} className="object-contain mb-4" />
             <p className="text-ink-soft text-sm leading-relaxed max-w-xs">
-              AI-powered sign language learning platform. Learn at your own pace with real-time feedback.
+              Learn the sign language alphabet and numbers with live feedback from your webcam.
             </p>
           </div>
 

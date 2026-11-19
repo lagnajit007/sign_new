@@ -46,11 +46,15 @@ export function ActivityBars({
           const highPct = d.total ? (d.highlight / d.total) * 100 : 0;
           return (
             <div key={i} className="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+              {/* Bars grow with scaleY (transform only) from the baseline. */}
               <div
-                className="relative w-full overflow-hidden rounded-[3px] bg-subtle-hover transition-[height] duration-500"
-                style={{ height: `${Math.max(totalPct, d.total ? 3 : 1.5)}%` }}
+                className="relative h-full w-full origin-bottom overflow-hidden rounded-[3px] bg-subtle-hover transition-transform duration-500"
+                style={{ transform: `scaleY(${Math.max(totalPct, d.total ? 3 : 1.5) / 100})` }}
               >
-                <div className="absolute inset-x-0 bottom-0 bg-brand" style={{ height: `${highPct}%` }} />
+                <div
+                  className="absolute inset-0 origin-bottom bg-brand transition-transform duration-500"
+                  style={{ transform: `scaleY(${highPct / 100})` }}
+                />
               </div>
               <div className="pointer-events-none absolute -top-8 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-fg px-1.5 py-1 text-[11px] text-canvas group-hover:block">
                 {d.label}: {d.highlight}/{d.total}

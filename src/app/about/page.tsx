@@ -11,7 +11,7 @@ const roadmap = [
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div data-surface="marketing" className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-20">
         <Link href="/" className="inline-flex items-center gap-2 text-ink-soft hover:text-brand text-sm font-medium mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Home
@@ -176,7 +176,7 @@ export default function AboutPage() {
           </p>
           <Link
             href="mailto:hello@sanjog.app"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition"
           >
             <Mail className="w-4 h-4" />
             hello@sanjog.app

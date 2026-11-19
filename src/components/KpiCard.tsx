@@ -52,7 +52,7 @@ export default function KpiCard({
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         'bg-white border border-[#ECE8FF] rounded-2xl p-6',
-        'hover:-translate-y-1 transition-all duration-200',
+        'hover:-translate-y-1 transition duration-200',
         'shadow-[0_8px_24px_rgba(125,84,255,0.08)]',
         'flex flex-col',
         className,

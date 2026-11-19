@@ -121,9 +121,9 @@ export default function RecognitionDemo() {
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
               <motion.div
-                className={phase === "correct" ? "h-full rounded-full bg-emerald-400" : "h-full rounded-full bg-white/40"}
+                className={phase === "correct" ? "h-full origin-left rounded-full bg-emerald-400" : "h-full origin-left rounded-full bg-white/40"}
                 initial={false}
-                animate={{ width: `${conf * 100}%` }}
+                animate={{ scaleX: conf }}
                 transition={reduce ? { duration: 0 } : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
               />
             </div>

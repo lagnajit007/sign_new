@@ -26,7 +26,7 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition duration-300 ${
         scrolled ? "bg-white/90 backdrop-blur-md shadow-sm" : "bg-transparent"
       }`}
     >
@@ -61,7 +61,7 @@ export default function Navbar() {
             <SignedIn>
               <Link
                 href="/dashboard"
-                className="px-5 py-2 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition-all"
+                className="px-5 py-2 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition"
               >
                 Dashboard
               </Link>

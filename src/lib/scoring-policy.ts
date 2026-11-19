@@ -1,20 +1,15 @@
 /**
  * Trusted-scoring policy.
  *
- * XP, streaks, sign mastery, achievements and challenges are only awarded for
- * recognition results that carry a valid HMAC signature from the recognition
- * backend (see src/lib/recognition-signature.ts). Scoring additionally requires
- * the deployment flag, so it can be switched off without a redeploy of the
- * backend:
- *
- *   SANJOG_SCORING_ENABLED=true   and   RECOGNITION_SIGNING_SECRET=<shared secret>
- *
- * The learning log (RecognitionAttempt rows) is never gated: practice history
- * stays useful even while scoring is off.
+ * Recognition runs on the server inside /api/attempts (src/lib/recognizer), so
+ * the client never submits a verdict and XP can't be forged. Scoring is on by
+ * default; set SANJOG_SCORING_ENABLED=false to pause XP, streaks, mastery,
+ * achievements and challenges without a redeploy of anything else. The learning
+ * log (RecognitionAttempt rows) is always written.
  */
 
 export function serverScoringEnabled(): boolean {
-  return process.env.SANJOG_SCORING_ENABLED === 'true' && Boolean(process.env.RECOGNITION_SIGNING_SECRET);
+  return process.env.SANJOG_SCORING_ENABLED !== 'false';
 }
 
 /** Shown on the lesson screen when the API reports scoring is off. */

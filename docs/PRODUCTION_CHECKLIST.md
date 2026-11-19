@@ -5,18 +5,19 @@ Updated 2026-11-19. ✅ done in code · 🧑 needs you · ⏳ still open
 ## P0: Blockers (the app didn't work)
 
 - ✅ Camera allowed: `Permissions-Policy: camera=(self)` (`next.config.ts`)
-- ✅ CSP allows the recognition API origin and the TF.js model hosts (tfhub/Kaggle/GCS)
+- ✅ CSP allows the TF.js model hosts (tfhub/Kaggle/GCS) and Clerk's bot check (Cloudflare Turnstile)
 - ✅ Letter predictions no longer return 500. The model's string labels are used directly (`backend/app.py`), with tests
 - ✅ Landmarks normalised the same way as in training (divided by the video size, then the min subtracted)
 - ✅ `/api/attempts` no longer crashes. Attempts are always saved, and XP only goes to signed results
 - ✅ Migration drift fixed: the init migration is restored, and the changes now live in 2 new migrations
 - ✅ `/about` is public. The sign-in redirect no longer depends on `NEXT_PUBLIC_APP_URL`
 - ✅ The error boundary no longer disables server rendering for the whole app
-- 🧑 **The Supabase project in `.env` no longer exists** ("tenant not found"). Create a new free project (DEPLOYMENT.md §1)
+- ✅ New Supabase project created, migrated and seeded (schema verified to match)
 
 ## P1: Auth, integrity, correctness
 
-- ✅ XP can't be forged. The backend HMAC-signs each prediction, and the API checks the signature, its age (120 s) and the single-use nonce
+- ✅ XP can't be forged. Recognition runs inside the app: the browser sends hand-shape features, and `/api/attempts` runs the model itself, so the client never submits a verdict
+- ✅ No separate recognition server. The trained model is exported to `src/lib/recognizer` (TypeScript matches sklearn within 1e-8 on 80 fixtures)
 - ✅ XP, streak, achievement and challenge writes run in one transaction with atomic increments. Each reward pays out exactly once
 - ✅ Per-user rate limit on attempts (20/min), backed by the database so it works on serverless
 - ✅ Clerk webhook (`/api/webhooks/clerk`) handles create, update and delete. Lazy creation stays as a fallback
@@ -24,12 +25,11 @@ Updated 2026-11-19. ✅ done in code · 🧑 needs you · ⏳ still open
 - ✅ One privacy and demo filter (`src/lib/community.ts`) is shared by the API and the server-rendered dashboard
 - ✅ Every API route returns JSON errors. Pages show an error state instead of a misleading empty state
 - ✅ Duplicate username returns 409
-- ✅ Backend: TensorFlow removed (the image is about 2 GB smaller), gunicorn and flask-cors CVE versions bumped, gthread workers, ProxyFix, JSON errors, 16 KB body limit, per-IP limit instead of one global throttle
-- ✅ Client sends at most 1 request at a time with no retry storms, detects camera errors by `err.name`, and shows a "waking up" state for the free host
+- ✅ Reference Flask backend kept for experiments: letter-label fix, TensorFlow removed, patched dependencies, JSON errors, tests
+- ✅ Instant in-browser feedback, no network calls per frame. Camera errors detected by `err.name`. Confident misses are logged, so "Needs practice" works
 - ✅ `vercel-build` runs `prisma migrate deploy`
-- 🧑 Create the Hugging Face Space and set its secrets (DEPLOYMENT.md §2)
-- 🧑 Add the Clerk webhook and its secret (DEPLOYMENT.md §3)
-- 🧑 Set the Vercel env vars, then redeploy (DEPLOYMENT.md §4)
+- 🧑 Add the Clerk webhook and its secret (DEPLOYMENT.md §2)
+- 🧑 Set the Vercel env vars, then redeploy (DEPLOYMENT.md §3)
 - 🧑 Shut down the old Railway service so it stops billing
 
 ## P2: No fake data
@@ -52,8 +52,9 @@ Updated 2026-11-19. ✅ done in code · 🧑 needs you · ⏳ still open
 - ✅ Neutral token system (`bg-panel`, `text-fg`, `border-line` …) with one violet accent. Light, dark and system themes
 - ✅ Rebuilt Overview, Lessons, Progress, Challenges, Achievements, Leaderboard (new, sortable), Activity, Profile and Settings
 - ✅ The landing page is server-rendered, so there's no full-screen loader before content
-- ⏳ Practice screen: recoloured to the new tokens but not re-laid out. Visually check it once the database is up
-- ⏳ Run the design audit on the signed-in screens once the database is up (they can't render without one)
+- ✅ Signed-in screens checked in the browser, light and dark. Fixed pool timeouts, first-login race, duplicate button, dark logo, tab titles
+- ⏳ Practice screen: recoloured but not re-laid out
+- ⏳ Run the design-auditor skill
 
 ## P3: Hygiene
 

@@ -15,7 +15,7 @@ export default function AIShowcase() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-soft rounded-full text-brand text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
             <Zap className="w-4 h-4" />
             AI Recognition
           </div>
@@ -90,7 +90,7 @@ export default function AIShowcase() {
                 {[40, 55, 48, 62, 70, 68, 78, 85, 82, 92].map((h, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center">
                     <div
-                      className="w-full bg-brand rounded-t transition-all duration-500"
+                      className="w-full bg-brand rounded-t transition duration-500"
                       style={{ height: `${h}%` }}
                     />
                   </div>

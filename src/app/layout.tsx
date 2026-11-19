@@ -27,8 +27,8 @@ const poppins = Poppins({
 
 // Define metadata
 export const metadata: Metadata = {
-  title: "Sanjog - Learn Sign Language With AI-Powered Real-Time Feedback",
-  description: "Practice sign language through your webcam with AI-powered gesture recognition. Get instant feedback, track progress, earn XP, and build communication skills — free and in your browser.",
+  title: "Sanjog: practise sign language with live webcam feedback",
+  description: "Practise fingerspelling A–Z and 0–9 in front of your webcam. Sanjog recognises each sign as you make it and tracks your progress. Free, in your browser.",
   icons: [
     { rel: 'icon', url: '/S-logo.svg' }
   ]
