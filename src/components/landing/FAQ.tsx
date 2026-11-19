@@ -1,106 +1,92 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRef } from "react"
-import { useScrollReveal } from "@/lib/animations"
-import { ChevronDown, HelpCircle } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { cn } from "@/lib/utils";
 
-const faqs = [
+const FAQS = [
   {
     q: "What is Sanjog?",
-    a: "Sanjog is a free practice tool for the sign language alphabet (A–Z) and numbers (0–9). You make a sign in front of your webcam and it tells you, instantly, which sign it sees and how confident it is.",
+    a: "A free practice tool for the sign language alphabet (A–Z) and numbers (0–9). You make a sign in front of your webcam and it tells you, instantly, which sign it sees and how confident it is.",
   },
   {
-    q: "How does AI recognition work?",
-    a: "Sanjog uses TensorFlow.js with a handpose model that tracks 21 key points on your hand. When you sign, a classifier reads the shape of your hand from those points and tells you which letter or number it sees, with a confidence score.",
+    q: "How does recognition work?",
+    a: "Your browser tracks 21 points on your hand with TensorFlow.js. A small trained model reads the shape those points make and names the letter or number, with a confidence score. A sign counts as correct at 70% confidence or higher.",
   },
   {
-    q: "Is Sanjog free?",
-    a: "Yes! Core learning features including lessons, AI recognition, progress tracking, and achievements are completely free. We believe sign language education should be accessible to everyone.",
+    q: "Is it free?",
+    a: "Yes. Lessons, practice with live feedback, progress tracking, streaks and achievements are all free. There's no paid plan.",
   },
   {
     q: "Do I need a webcam?",
-    a: "A webcam is required for the interactive practice mode with real-time AI feedback. However, you can browse lessons, learn signs visually, and track progress without a camera.",
+    a: "Yes, for practice: recognition needs to see your hand. You can still browse lessons and your progress without one.",
   },
   {
-    q: "Can beginners use Sanjog?",
-    a: "Absolutely. Sanjog is designed for complete beginners. Lessons start with the alphabet and basic signs, with progressive difficulty as you improve. No prior experience needed.",
+    q: "Is it for beginners?",
+    a: "Yes. No experience needed. Start with any letter or number and go at your own pace.",
   },
   {
-    q: "How accurate is the recognition?",
-    a: "It depends on lighting, camera angle and how clearly the hand is in frame. Every attempt shows the model’s confidence, and a sign only counts as correct at 70% confidence or higher. Good, even lighting and a plain background help the most.",
+    q: "How accurate is it?",
+    a: "It depends on lighting, camera angle and how clearly your hand is in frame. Even lighting and a plain background help the most, and every attempt shows the model's confidence so you can see what it sees.",
   },
   {
-    q: "Is my camera footage stored?",
-    a: "No. Your video is never recorded, stored or uploaded. Hand tracking and recognition run in your browser. When you complete a sign, 42 numbers describing your hand’s shape are sent to Sanjog to verify it, and only the result is saved to your account.",
+    q: "Is my video stored?",
+    a: "No. Video is never recorded, stored or uploaded. When you complete a sign, 42 numbers describing your hand's shape are sent to Sanjog to check it, and only the result (sign, confidence, time) is saved to your account.",
   },
-]
-
-function FAQItem({ item, index }: { item: typeof faqs[0]; index: number }) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <div
-      className="border border-brand-soft rounded-2xl overflow-hidden bg-surface transition duration-200 hover:shadow-card"
-    >
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-5 text-left"
-        aria-expanded={open}
-        aria-controls={`faq-answer-${index}`}
-      >
-        <span className="text-sm font-semibold text-ink pr-4">{item.q}</span>
-        <ChevronDown
-          className={`w-4 h-4 text-ink-soft flex-shrink-0 transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            id={`faq-answer-${index}`}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5 text-sm text-ink-soft leading-relaxed">{item.a}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
+];
 
 export default function FAQ() {
-  const sectionRef = useRef<HTMLDivElement>(null!)
-  useScrollReveal(sectionRef)
+  const [open, setOpen] = useState<number | null>(0);
+  const reduce = useReducedMotion();
 
   return (
-    <section id="faq" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-bg">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
-            <HelpCircle className="w-4 h-4" />
-            FAQ
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-ink mb-4">
-            Frequently Asked Questions
+    <section id="faq" className="scroll-mt-20 py-20 md:py-28" aria-labelledby="faq-heading">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
+        <div>
+          <h2 id="faq-heading" className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+            Questions
           </h2>
-          <p className="text-lg text-ink-soft">
-            Everything you need to know about Sanjog.
-          </p>
+          <p className="mt-3 text-[16px] text-fg-muted">Can&apos;t find an answer? Start a lesson and see for yourself; it takes a minute.</p>
         </div>
-
-        <div className="space-y-3" data-reveal-child>
-          {faqs.map((item, i) => (
-            <FAQItem key={i} item={item} index={i} />
-          ))}
-        </div>
+        <ul className="border-t border-line">
+          {FAQS.map((item, i) => {
+            const isOpen = open === i;
+            return (
+              <li key={item.q} className="border-b border-line">
+                <h3>
+                  <button
+                    className="flex w-full items-center justify-between gap-4 rounded-lg py-4 text-left text-[15px] font-medium text-fg"
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-${i}`}
+                    onClick={() => setOpen(isOpen ? null : i)}
+                  >
+                    {item.q}
+                    <Plus
+                      aria-hidden
+                      className={cn("size-4 shrink-0 text-fg-subtle transition-transform duration-200", isOpen && "rotate-45")}
+                    />
+                  </button>
+                </h3>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      id={`faq-${i}`}
+                      initial={reduce ? false : { height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={reduce ? undefined : { height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <p className="max-w-2xl pb-5 text-sm leading-relaxed text-fg-muted">{item.a}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
-  )
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowLeft, Maximize2, Minimize2, CameraOff, RefreshCw, Play } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, CameraOff, RefreshCw, Sparkles } from "lucide-react";
 import Button from "@/components/Button";
 import * as tf from "@tensorflow/tfjs";
 import * as handpose from "@tensorflow-models/handpose";
@@ -9,11 +9,11 @@ import "@tensorflow/tfjs-backend-webgl";
 
 import CameraPanel, { CameraState } from "./components/CameraPanel";
 import LessonPanel from "./components/LessonPanel";
-import FeedbackCard, { FeedbackType } from "./components/FeedbackCard";
+import FeedbackCard, { RecognitionState } from "./components/FeedbackCard";
 import CompletionScreen from "./components/CompletionScreen";
+import CountdownOverlay from "./components/CountdownOverlay";
 import {
   ModelInitLoader,
-  GestureDetectionLoader,
   XPToast,
   AchievementCelebration,
   LevelUpCelebration,
@@ -27,47 +27,50 @@ const ALPHABET_LESSONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const NUMBER_LESSONS = "0123456789".split("");
 
 const RECOGNITION_CONFIDENCE_THRESHOLD = 0.7;
-const CONSECUTIVE_MATCHES_NEEDED = 3;
-// Hand tracking and sign recognition both run in the browser on each tick.
+// At ~200ms detection interval, 5 consecutive matches ≈ 1.0 second of stable hold
+const CONSECUTIVE_MATCHES_NEEDED = 5;
 const DETECTION_INTERVAL = 200;
-
-/** Log at most one missed attempt per sign in this window (feeds "Needs practice"). */
 const MISS_LOG_INTERVAL_MS = 15000;
 
-// ─── Utility functions ───
+const SIGN_IMAGES = new Set("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""));
+
 const generateSVG = (text: string) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" role="img" aria-label="Sign for ${text}"><rect width="100%" height="100%" fill="#F4F4F5" /><text x="50%" y="50%" font-family="system-ui, sans-serif" font-size="120" font-weight="600" fill="#5B35F0" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 };
 
+const signImage = (sign: string) => (SIGN_IMAGES.has(sign) ? `/signs/${sign}.svg` : generateSVG(sign));
+
 const devErr = process.env.NODE_ENV !== "production" ? console.error.bind(console, "[lesson]") : () => {};
 
-//  Page Component 
+export type PracticePhase = "ready" | "countdown" | "recognizing" | "success" | "complete";
+
 export default function InteractiveLessonPage() {
-  //  Camera state 
+  // ─── Camera state ───
   const [cameraState, setCameraState] = useState<CameraState>("off");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [needsManualPlay, setNeedsManualPlay] = useState(false);
 
-  //  Model state 
+  // ─── Model state ───
   const [modelLoaded, setModelLoaded] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [scoringDisabled, setScoringDisabled] = useState(false);
 
-  //  Lesson state 
+  // ─── Lesson progression state ───
   const [lessonType, setLessonType] = useState<"alphabet" | "number">("alphabet");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [targetSign, setTargetSign] = useState("A");
-  const [progress, setProgress] = useState(0);
-  const [lessonStatus, setLessonStatus] = useState<"idle" | "practicing" | "complete">("idle");
+  const [phase, setPhase] = useState<PracticePhase>("ready");
+  const [masteredSigns, setMasteredSigns] = useState<Set<string>>(new Set());
 
-  //  Recognition state 
+  // ─── Recognition state ───
+  const [handDetected, setHandDetected] = useState(false);
+  const [isCorrectCandidate, setIsCorrectCandidate] = useState(false);
   const [predictionResult, setPredictionResult] = useState<{ prediction: string; confidence: number } | null>(null);
   const [consecutiveMatches, setConsecutiveMatches] = useState(0);
-  const [feedbackType, setFeedbackType] = useState<FeedbackType>("idle");
-  const [feedbackMessage, setFeedbackMessage] = useState("Enable your camera and start practicing to receive feedback");
+  const [feedbackState, setFeedbackState] = useState<RecognitionState>("idle");
 
-  //  Stats state 
+  // ─── Stats state ───
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [sessionXp, setSessionXp] = useState(0);
@@ -75,20 +78,25 @@ export default function InteractiveLessonPage() {
   const [xpToast, setXpToast] = useState<{ xp: number; achievements: string[] } | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
 
-  //  Refs 
+  // ─── Mobile responsive tab ───
+  const [mobileTab, setMobileTab] = useState<"learn" | "camera">("camera");
+
+  // ─── Refs ───
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const modelRef = useRef<handpose.HandPose | null>(null);
   const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const recordedSignRef = useRef<string | null>(null);
+  const hasSubmittedRef = useRef(false);
   const isMountedRef = useRef(true);
   const lastMissLogRef = useRef<Map<string, number>>(new Map());
 
   const currentLessons = lessonType === "alphabet" ? ALPHABET_LESSONS : NUMBER_LESSONS;
+  const nextSignLabel = currentIndex < currentLessons.length - 1 ? currentLessons[currentIndex + 1] : undefined;
+  const holdProgress = Math.min(100, Math.round((consecutiveMatches / CONSECUTIVE_MATCHES_NEEDED) * 100));
 
-  //  Load TF model 
+  // ─── 1. Load TF.js model ───
   useEffect(() => {
     isMountedRef.current = true;
     let cancelled = false;
@@ -115,17 +123,20 @@ export default function InteractiveLessonPage() {
       } catch (err) {
         devErr("Model load failed:", err);
         if (isMountedRef.current) {
-          setCameraError("Failed to load the hand detection model. Please refresh the page.");
+          setCameraError("Failed to load hand detection model. Please refresh.");
           setIsModelLoading(false);
         }
       }
     };
 
     loadModel();
-    return () => { cancelled = true; isMountedRef.current = false; };
+    return () => {
+      cancelled = true;
+      isMountedRef.current = false;
+    };
   }, []);
 
-  //  Lesson deep link (?set=alphabet|number&sign=A)
+  // ─── 2. Handle deep link (?set=alphabet|number&sign=A) ───
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const set = params.get("set") === "number" ? "number" : "alphabet";
@@ -135,10 +146,36 @@ export default function InteractiveLessonPage() {
     setCurrentIndex(idx >= 0 ? idx : 0);
   }, []);
 
-  //  Camera: Start 
+  // Sync targetSign with currentIndex
+  useEffect(() => {
+    setTargetSign(currentLessons[currentIndex]);
+  }, [currentIndex, currentLessons]);
+
+  // ─── 3. Stream Cleanup ───
+  const cleanupStream = useCallback(() => {
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+      detectionIntervalRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupStream();
+      isMountedRef.current = false;
+    };
+  }, [cleanupStream]);
+
+  // ─── 4. Camera Start / Stop / Restart ───
   const startCamera = useCallback(async () => {
     if (!isMountedRef.current) return;
-
     if (!modelLoaded) {
       setCameraError("Please wait for the recognition model to finish loading.");
       return;
@@ -152,7 +189,6 @@ export default function InteractiveLessonPage() {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("CAMERA_API_UNAVAILABLE");
       }
-
       if (!window.isSecureContext && window.location.hostname !== "localhost") {
         throw new Error("NOT_SECURE_CONTEXT");
       }
@@ -179,7 +215,6 @@ export default function InteractiveLessonPage() {
       }
 
       if (!stream) throw lastErr || new Error("CAMERA_FAILED");
-
       if (!isMountedRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return;
@@ -189,7 +224,7 @@ export default function InteractiveLessonPage() {
 
       if (!videoRef.current) {
         setCameraState("error");
-        setCameraError("Video element not found. Please refresh the page.");
+        setCameraError("Video element not found. Please refresh.");
         cleanupStream();
         return;
       }
@@ -231,12 +266,12 @@ export default function InteractiveLessonPage() {
       if (isMountedRef.current) {
         setCameraState("active");
         setCameraError(null);
+        // Automatically start 3-2-1 countdown when camera becomes active
+        setPhase("countdown");
+        setFeedbackState("countdown");
       }
     } catch (err: unknown) {
       if (!isMountedRef.current) return;
-
-      // getUserMedia rejects with a DOMException; its `name` is stable across
-      // browsers while `message` is not.
       const name = (err as DOMException)?.name ?? "";
       const msg = (err as Error)?.message ?? "";
       if (msg === "MANUAL_PLAY_NEEDED") return;
@@ -245,209 +280,74 @@ export default function InteractiveLessonPage() {
         setCameraState("denied");
       } else if (name === "NotFoundError" || name === "OverconstrainedError" || msg === "CAMERA_API_UNAVAILABLE") {
         setCameraState("error");
-        setCameraError("No camera found. Please connect a camera and try again.");
+        setCameraError("No camera found. Please connect a webcam.");
       } else if (msg === "NOT_SECURE_CONTEXT") {
         setCameraState("error");
-        setCameraError("Camera access requires a secure connection (HTTPS). Please use HTTPS or localhost.");
-      } else if (msg === "TIMEOUT") {
-        // handled in cameraTimeout above
+        setCameraError("Camera access requires HTTPS or localhost.");
       } else {
         setCameraState("error");
-        setCameraError("An unexpected error occurred. Please try again.");
+        setCameraError("An unexpected camera error occurred.");
       }
     }
-  }, [modelLoaded]);
+  }, [modelLoaded, cleanupStream]);
 
-  //  Camera: Stop 
   const stopCamera = useCallback(() => {
     cleanupStream();
     if (isMountedRef.current) {
       setCameraState("stopped");
-      setLessonStatus("idle");
+      setPhase("ready");
       setPredictionResult(null);
-      setFeedbackType("idle");
-      setFeedbackMessage("Camera stopped. Start the camera to continue practicing.");
+      setHandDetected(false);
+      setIsCorrectCandidate(false);
+      setFeedbackState("idle");
     }
-  }, []);
+  }, [cleanupStream]);
 
-  //  Camera: Restart 
   const restartCamera = useCallback(() => {
     stopCamera();
     setTimeout(() => startCamera(), 300);
   }, [stopCamera, startCamera]);
 
-  //  Stream cleanup 
-  const cleanupStream = () => {
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-      detectionIntervalRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanupStream();
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  //  Record attempt 
-  const recordAttempt = useCallback(async (attempt: {
-    signLabel: string; lessonType: "alphabet" | "number";
-    /** Hand-shape features; the server re-runs recognition on them. */
-    features: number[];
-  }) => {
-    try {
-      const res = await fetch("/api/attempts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(attempt),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.scoringEnabled === false) setScoringDisabled(true);
-      if (data.xpGained > 0 || (data.unlockedAchievements?.length ?? 0) > 0) {
-        setSessionXp((p) => p + (data.xpGained || 0));
-        setXpToast({ xp: data.xpGained, achievements: (data.unlockedAchievements ?? []).map((a: { name: string }) => a.name) });
-        setTimeout(() => setXpToast(null), 4000);
-      }
-      if (data.leveledUp) {
-        setLevelUp(data.level);
-      }
-    } catch { /* fire-and-forget */ }
-  }, []);
-
-  //  Manual play handler 
   const handleManualPlay = useCallback(() => {
     if (!videoRef.current || !streamRef.current) return;
-    videoRef.current.play().then(() => {
-      setNeedsManualPlay(false);
-    }).catch(() => {
-      setCameraError("Browser prevented video playback. Please check camera permissions.");
-    });
+    videoRef.current
+      .play()
+      .then(() => setNeedsManualPlay(false))
+      .catch(() => setCameraError("Browser prevented video playback."));
   }, []);
 
-  //  Detection loop 
-  useEffect(() => {
-    if (cameraState !== "active" || lessonStatus !== "practicing" || !modelRef.current || !videoRef.current) return;
-
-    let active = true;
-    let lastLandmarks: number[][] | null = null;
-
-    const detect = async () => {
-      if (!active || !modelRef.current || !videoRef.current || !canvasRef.current) return;
-
+  // ─── 5. Server Attempt Logging ───
+  const recordAttempt = useCallback(
+    async (attempt: { signLabel: string; lessonType: "alphabet" | "number"; features: number[] }) => {
       try {
-        if (videoRef.current.readyState !== 4) return;
+        const res = await fetch("/api/attempts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(attempt),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.scoringEnabled === false) setScoringDisabled(true);
 
-        const predictions = await modelRef.current.estimateHands(videoRef.current);
-        if (!active) return;
-
-        const ctx = canvasRef.current.getContext("2d");
-        if (!ctx) return;
-
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-        if (predictions.length > 0) {
-          const rawLandmarks = predictions[0].landmarks;
-          drawHandLandmarks(ctx, rawLandmarks);
-          lastLandmarks = rawLandmarks;
-
-          try {
-            const video = videoRef.current;
-            const features = landmarksToFeatures(rawLandmarks, video.videoWidth, video.videoHeight);
-            if (!features) return;
-            const result = recognize(features);
-
-            setPredictionResult(result);
-
-            const confidence = result.confidence || 0;
-            const isCorrect = result.prediction === targetSign && confidence > RECOGNITION_CONFIDENCE_THRESHOLD;
-            setTotalAttempts((p) => p + 1);
-
-            if (isCorrect) {
-              setConsecutiveMatches((prev) => prev + 1);
-              setFeedbackType("correct");
-              setTotalCorrect((p) => p + 1);
-
-              if (confidence > 0.9) setFeedbackMessage(`Excellent! Your "${targetSign}" sign looks perfect!`);
-              else if (confidence > 0.8) setFeedbackMessage(`Great job! "${targetSign}" is very clear.`);
-              else setFeedbackMessage(`Good! "${targetSign}" is being recognized well. Keep practicing.`);
-
-              if (consecutiveMatches >= CONSECUTIVE_MATCHES_NEEDED - 1) {
-                if (recordedSignRef.current !== targetSign) {
-                  recordedSignRef.current = targetSign;
-                  void recordAttempt({ signLabel: targetSign, lessonType, features });
-                }
-                setProgress((prev) => {
-                  const next = Math.min(prev + 5, 100);
-                  if (next >= 100) {
-                    if (currentIndex < currentLessons.length - 1) {
-                      setTimeout(() => goToNextSign(), 100);
-                      return 0;
-                    } else {
-                      setTimeout(() => setLessonStatus("complete"), 200);
-                    }
-                  }
-                  return next;
-                });
-              } else {
-                setProgress((prev) => Math.min(prev + 2, 100));
-              }
-            } else {
-              setConsecutiveMatches(0);
-              if (result.prediction && result.prediction !== targetSign) {
-                // A confident wrong sign is a real attempt worth remembering.
-                const last = lastMissLogRef.current.get(targetSign) ?? 0;
-                if (confidence >= RECOGNITION_CONFIDENCE_THRESHOLD && Date.now() - last > MISS_LOG_INTERVAL_MS) {
-                  lastMissLogRef.current.set(targetSign, Date.now());
-                  void recordAttempt({ signLabel: targetSign, lessonType, features });
-                }
-                setFeedbackType("incorrect");
-                setFeedbackMessage(`Make the "${targetSign}" sign — detected "${result.prediction}" instead. Keep your hand centered.`);
-              } else {
-                setFeedbackType("no-hand");
-                setFeedbackMessage("No hand detected. Position your hand in the frame.");
-              }
-              setProgress((prev) => Math.max(prev - 0.5, 0));
-            }
-          } catch {
-            setFeedbackType("error");
-            setFeedbackMessage("Recognition error. Please try again.");
-          }
-        } else {
-          if (lastLandmarks) {
-            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-            lastLandmarks = null;
-          }
-          setPredictionResult(null);
-          setFeedbackType("no-hand");
-          setFeedbackMessage("No hand detected. Position your hand in the frame.");
-          setConsecutiveMatches(0);
+        if (data.xpGained > 0 || (data.unlockedAchievements?.length ?? 0) > 0) {
+          setSessionXp((p) => p + (data.xpGained || 0));
+          setXpToast({
+            xp: data.xpGained,
+            achievements: (data.unlockedAchievements ?? []).map((a: { name: string }) => a.name),
+          });
+          setTimeout(() => setXpToast(null), 4000);
         }
-      } catch { /* ignore frame errors */ }
-    };
-
-    detectionIntervalRef.current = setInterval(detect, DETECTION_INTERVAL);
-
-    return () => {
-      active = false;
-      if (detectionIntervalRef.current) {
-        clearInterval(detectionIntervalRef.current);
-        detectionIntervalRef.current = null;
+        if (data.leveledUp) {
+          setLevelUp(data.level);
+        }
+      } catch {
+        /* attempt recording fail-safe */
       }
-    };
-  }, [cameraState, lessonStatus, modelLoaded, targetSign, currentIndex, currentLessons, consecutiveMatches, recordAttempt, lessonType]);
+    },
+    []
+  );
 
-  //  Hand landmark drawing 
+  // ─── 6. Hand Landmark Canvas Drawing ───
   const drawHandLandmarks = (ctx: CanvasRenderingContext2D, landmarks: number[][]) => {
     const connections = [
       [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
@@ -466,7 +366,7 @@ export default function InteractiveLessonPage() {
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
       ctx.strokeStyle = "#7D54FF";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
     });
 
@@ -474,332 +374,474 @@ export default function InteractiveLessonPage() {
       const [x, y] = l;
       if (isNaN(x) || isNaN(y)) return;
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = "#7D54FF";
+      ctx.arc(x, y, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = "#A78BFA";
       ctx.fill();
     });
   };
 
-  //  Navigation 
-  const goToNextSign = useCallback(() => {
+  // ─── 7. Active Recognition & Hold Stability Loop ───
+  useEffect(() => {
+    if (cameraState !== "active" || phase !== "recognizing" || !modelRef.current || !videoRef.current) return;
+
+    let active = true;
+
+    const detect = async () => {
+      if (!active || !modelRef.current || !videoRef.current || !canvasRef.current) return;
+
+      try {
+        if (videoRef.current.readyState !== 4) return;
+
+        const predictions = await modelRef.current.estimateHands(videoRef.current);
+        if (!active) return;
+
+        const ctx = canvasRef.current.getContext("2d");
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+        if (predictions.length > 0) {
+          const rawLandmarks = predictions[0].landmarks;
+          drawHandLandmarks(ctx, rawLandmarks);
+          setHandDetected(true);
+
+          try {
+            const video = videoRef.current;
+            const features = landmarksToFeatures(rawLandmarks, video.videoWidth, video.videoHeight);
+            if (!features) return;
+
+            const result = recognize(features);
+            setPredictionResult(result);
+            setTotalAttempts((p) => p + 1);
+
+            const confidence = result.confidence || 0;
+            const isMatch = result.prediction === targetSign && confidence >= RECOGNITION_CONFIDENCE_THRESHOLD;
+
+            if (isMatch) {
+              setIsCorrectCandidate(true);
+              setTotalCorrect((p) => p + 1);
+
+              setConsecutiveMatches((prev) => {
+                const nextMatches = prev + 1;
+                if (nextMatches >= CONSECUTIVE_MATCHES_NEEDED) {
+                  // Stability hold complete! Trigger success moment
+                  setPhase("success");
+                  setFeedbackState("success");
+
+                  if (!hasSubmittedRef.current) {
+                    hasSubmittedRef.current = true;
+                    setMasteredSigns((s) => new Set([...s, targetSign]));
+                    void recordAttempt({ signLabel: targetSign, lessonType, features });
+                  }
+                  return CONSECUTIVE_MATCHES_NEEDED;
+                }
+                setFeedbackState("holding");
+                return nextMatches;
+              });
+            } else {
+              setIsCorrectCandidate(false);
+              // Jitter decay: decrement matches gracefully rather than harsh 0% wipe
+              setConsecutiveMatches((prev) => Math.max(0, prev - 1));
+
+              if (result.prediction && result.prediction !== targetSign && confidence >= RECOGNITION_CONFIDENCE_THRESHOLD) {
+                setFeedbackState("incorrect");
+                const last = lastMissLogRef.current.get(targetSign) ?? 0;
+                if (Date.now() - last > MISS_LOG_INTERVAL_MS) {
+                  lastMissLogRef.current.set(targetSign, Date.now());
+                  void recordAttempt({ signLabel: targetSign, lessonType, features });
+                }
+              } else {
+                setFeedbackState("detected");
+              }
+            }
+          } catch {
+            setFeedbackState("error");
+          }
+        } else {
+          // No hand landmarks found
+          setHandDetected(false);
+          setIsCorrectCandidate(false);
+          setPredictionResult(null);
+          setConsecutiveMatches(0);
+          setFeedbackState("waiting");
+          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
+      } catch {
+        /* frame-level skip */
+      }
+    };
+
+    detectionIntervalRef.current = setInterval(detect, DETECTION_INTERVAL);
+
+    return () => {
+      active = false;
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        detectionIntervalRef.current = null;
+      }
+    };
+  }, [cameraState, phase, targetSign, lessonType, recordAttempt]);
+
+  // ─── 8. Progression & Navigation Handlers ───
+  const startNextSign = useCallback(() => {
     if (currentIndex < currentLessons.length - 1) {
-      const next = currentIndex + 1;
-      setCurrentIndex(next);
-      setTargetSign(currentLessons[next]);
-      setProgress(0);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      setTargetSign(currentLessons[nextIdx]);
+      hasSubmittedRef.current = false;
       setConsecutiveMatches(0);
       setPredictionResult(null);
-      recordedSignRef.current = null;
+      setIsCorrectCandidate(false);
+      setPhase("countdown");
+      setFeedbackState("countdown");
+    } else {
+      setPhase("complete");
     }
   }, [currentIndex, currentLessons]);
 
   const goToPreviousSign = useCallback(() => {
     if (currentIndex > 0) {
-      const prev = currentIndex - 1;
-      setCurrentIndex(prev);
-      setTargetSign(currentLessons[prev]);
-      setProgress(0);
+      const prevIdx = currentIndex - 1;
+      setCurrentIndex(prevIdx);
+      setTargetSign(currentLessons[prevIdx]);
+      hasSubmittedRef.current = false;
       setConsecutiveMatches(0);
       setPredictionResult(null);
-      recordedSignRef.current = null;
+      setIsCorrectCandidate(false);
+      setPhase("countdown");
+      setFeedbackState("countdown");
     }
   }, [currentIndex, currentLessons]);
 
-  const startPractice = useCallback(() => {
-    setLessonStatus("practicing");
-    setProgress(0);
+  const restartAttempt = useCallback(() => {
+    hasSubmittedRef.current = false;
+    setConsecutiveMatches(0);
     setPredictionResult(null);
-    setFeedbackType("idle");
-    setFeedbackMessage("Position your hand in front of the camera");
-  }, []);
-
-  const tryAgain = useCallback(() => {
-    setPredictionResult(null);
-    setFeedbackType("idle");
-    setFeedbackMessage("Position your hand in front of the camera");
+    setIsCorrectCandidate(false);
+    setPhase("countdown");
+    setFeedbackState("countdown");
   }, []);
 
   const handleLessonComplete = useCallback(() => {
-    setLessonStatus("idle");
+    setPhase("ready");
     setCurrentIndex(0);
     setTargetSign(currentLessons[0]);
-    setProgress(0);
+    hasSubmittedRef.current = false;
+    setConsecutiveMatches(0);
     setTotalCorrect(0);
     setTotalAttempts(0);
     setSessionXp(0);
   }, [currentLessons]);
 
-  //  Toggle lesson type 
   const handleToggleType = useCallback(() => {
     const newType = lessonType === "alphabet" ? "number" : "alphabet";
     setLessonType(newType);
     setTargetSign(newType === "alphabet" ? "A" : "0");
     setCurrentIndex(0);
-    setProgress(0);
-    setLessonStatus("idle");
+    hasSubmittedRef.current = false;
+    setConsecutiveMatches(0);
     setPredictionResult(null);
+    setMasteredSigns(new Set());
+    setPhase("ready");
+    setFeedbackState("idle");
     if (cameraState === "active") stopCamera();
   }, [lessonType, cameraState, stopCamera]);
 
-  //  Fullscreen 
+  // ─── 9. Keyboard Shortcuts (Space for Continue/Skip) ───
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (phase === "success") {
+          startNextSign();
+        } else if (phase === "countdown") {
+          setPhase("recognizing");
+          setFeedbackState("waiting");
+        }
+      } else if (e.code === "ArrowRight") {
+        if (currentIndex < currentLessons.length - 1) {
+          e.preventDefault();
+          startNextSign();
+        }
+      } else if (e.code === "ArrowLeft") {
+        if (currentIndex > 0) {
+          e.preventDefault();
+          goToPreviousSign();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [phase, startNextSign, goToPreviousSign, currentIndex, currentLessons.length]);
+
+  // ─── 10. Fullscreen toggle ───
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = () => {
     if (!document.fullscreenElement && containerRef.current) {
       containerRef.current.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
       setIsFullscreen(false);
     }
   };
 
-  //  Sync target sign with currentIndex 
-  useEffect(() => {
-    setTargetSign(currentLessons[currentIndex]);
-  }, [currentIndex, currentLessons]);
-
-  //  Accuracy calculation 
   const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
-  //  Render 
   return (
     <>
-      <div ref={containerRef} className="flex h-full min-h-[640px] bg-canvas overflow-hidden">
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Top Navigation */}
-          <header className="px-4 lg:px-6 pt-4 pb-2 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" href="/dashboard/lessons" icon={ArrowLeft}>
-                Back to Lessons
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
+      {/* ─── Root Workspace: 100dvh, overflow-hidden, no desktop scrollbar ─── */}
+      <div
+        ref={containerRef}
+        className="h-[100dvh] max-h-[100dvh] w-full flex flex-col bg-canvas overflow-hidden select-none"
+      >
+        {/* ─── Compact Header (48px - 52px) ─── */}
+        <header className="h-12 lg:h-13 px-4 lg:px-6 flex items-center justify-between shrink-0 border-b border-line bg-panel z-10">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" href="/dashboard/lessons" icon={ArrowLeft} className="text-xs">
+              Lessons
+            </Button>
+            <span className="h-4 w-px bg-line hidden sm:inline-block" />
+            <span className="text-xs font-semibold text-fg hidden sm:inline-block">
+              {lessonType === "alphabet" ? "ASL Alphabet Finger-Spelling" : "ASL Number Signs"}
+            </span>
+          </div>
+
+          {/* Right controls */}
+          <div className="flex items-center gap-2">
+            {/* Mobile Tab Switcher */}
+            <div className="flex lg:hidden bg-subtle p-0.5 rounded-lg border border-line">
               <button
-                onClick={handleToggleType}
-                className="bg-brand-tint text-brand text-xs px-3 py-1.5 rounded-full hover:bg-subtle transition-colors font-medium"
+                onClick={() => setMobileTab("learn")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  mobileTab === "learn" ? "bg-panel text-brand shadow-sm" : "text-fg-subtle"
+                }`}
               >
-                {lessonType === "alphabet" ? "Switch to Numbers" : "Switch to Alphabet"}
+                Learn
               </button>
-              <div className="bg-brand-tint text-brand text-xs px-3 py-1.5 rounded-full font-medium">
-                {lessonType === "alphabet" ? "Letter" : "Number"} {currentIndex + 1}/{currentLessons.length}
-              </div>
-              <Button
-                variant="icon"
-                size="md"
-                icon={isFullscreen ? Minimize2 : Maximize2}
-                onClick={toggleFullscreen}
-                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              />
+              <button
+                onClick={() => setMobileTab("camera")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  mobileTab === "camera" ? "bg-panel text-brand shadow-sm" : "text-fg-subtle"
+                }`}
+              >
+                Camera
+              </button>
             </div>
-          </header>
 
-          {/* XP Toast / Achievement Celebration */}
-          {xpToast && (
-            xpToast.achievements.length > 0 ? (
-              <AchievementCelebration
-                name={xpToast.achievements[0]}
-                icon="✨"
-                xp={xpToast.xp}
-                onDone={() => setXpToast(null)}
-              />
-            ) : (
-              <XPToast xp={xpToast.xp} achievements={[]} onDone={() => setXpToast(null)} />
-            )
-          )}
+            <button
+              onClick={handleToggleType}
+              className="bg-subtle text-fg text-xs px-3 py-1.5 rounded-lg hover:bg-subtle-hover transition-colors font-medium border border-line"
+            >
+              {lessonType === "alphabet" ? "123 Numbers" : "ABC Alphabet"}
+            </button>
 
-          {/* Level Up Celebration */}
-          {levelUp !== null && (
-            <LevelUpCelebration
-              newLevel={levelUp}
-              onDone={() => setLevelUp(null)}
+            <Button
+              variant="icon"
+              size="sm"
+              icon={isFullscreen ? Minimize2 : Maximize2}
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             />
-          )}
+          </div>
+        </header>
 
-          {scoringDisabled && (
-            <div role="status" className="mx-4 lg:mx-6 mb-2 rounded-lg border border-line bg-subtle px-3 py-2 shrink-0">
-              <p className="text-sm text-fg-muted">{SCORING_UNAVAILABLE_BANNER}</p>
+        {/* Scoring Disabled Banner if policy active */}
+        {scoringDisabled && (
+          <div role="status" className="mx-4 lg:mx-6 mt-2 rounded-lg border border-line bg-subtle px-3 py-1.5 shrink-0">
+            <p className="text-xs text-fg-muted">{SCORING_UNAVAILABLE_BANNER}</p>
+          </div>
+        )}
+
+        {/* Model Initializing Loader */}
+        {isModelLoading && (
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            <ModelInitLoader message="Initializing Real-time Recognition..." />
+          </div>
+        )}
+
+        {/* ─── Main Practice Workspace (2 Columns, Desktop Fits Viewport) ─── */}
+        {!isModelLoading && (
+          <main className="flex-1 min-h-0 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 overflow-hidden">
+            {/* ─── Left Column: Focused Learning Panel ─── */}
+            <div
+              className={`flex flex-col min-h-0 h-full rounded-2xl border border-line bg-panel overflow-hidden shadow-sm ${
+                mobileTab === "learn" ? "flex" : "hidden lg:flex"
+              }`}
+            >
+              <LessonPanel
+                targetSign={targetSign}
+                lessonType={lessonType}
+                currentIndex={currentIndex}
+                totalLessons={currentLessons.length}
+                completedCount={masteredSigns.size}
+                imageUrl={signImage(targetSign)}
+                hasHandImage={SIGN_IMAGES.has(targetSign)}
+                onPrevious={goToPreviousSign}
+                onNext={startNextSign}
+              />
             </div>
-          )}
 
-          {/* Model Loading */}
-          {isModelLoading && (
-            <div className="flex-1 flex items-center justify-center">
-              <ModelInitLoader message="Initializing Sign Recognition" />
-            </div>
-          )}
-
-          {/* Main Content */}
-          {!isModelLoading && (
-            <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden px-4 lg:px-6 pb-4">
-              {/* Left Panel - Lesson Info */}
-              <div className="w-full lg:w-1/2 rounded-xl border border-line bg-panel overflow-hidden animate-sj-enter">
-                <LessonPanel
-                  targetSign={targetSign}
-                  lessonType={lessonType}
-                  currentIndex={currentIndex}
-                  totalLessons={currentLessons.length}
-                  description={`Learn the sign for ${lessonType === "alphabet" ? "letter" : "number"} "${targetSign}"`}
-                  difficulty="Beginner"
-                  imageUrl={generateSVG(targetSign)}
-                  tips={[
-                    "Position your hand in front of the camera",
-                    `Form the ${lessonType} "${targetSign}" sign clearly`,
-                    "Keep your hand steady for best recognition",
-                    "Ensure good lighting on your hand",
-                  ]}
-                  progress={progress}
-                  onPrevious={goToPreviousSign}
-                  onNext={goToNextSign}
-                />
-              </div>
-
-              {/* Right Panel - Webcam + Feedback */}
-              <div className="w-full lg:w-1/2 rounded-xl bg-zinc-950 flex flex-col overflow-hidden animate-sj-enter">
-                <div className="flex-1 p-3 lg:p-4 flex flex-col gap-3">
-                  {/* Recognition Status Bar */}
-                  {cameraState === "active" && lessonStatus === "practicing" && (
-                    <div className="flex items-center justify-between shrink-0">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5 bg-black/40 rounded-full px-3 py-1.5">
-                          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                          <span className="text-xs text-green-300 font-medium">Recognizing</span>
-                        </div>
-                        {predictionResult && (
-                          <span className="text-xs bg-black/40 text-white px-3 py-1.5 rounded-full font-mono">
-                            Target: {targetSign}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {sessionXp > 0 && (
-                          <span className="text-xs bg-brand/30 text-white px-3 py-1.5 rounded-full">
-                             ✨ +{sessionXp} XP
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Camera Panel */}
-                  <CameraPanel
-                    cameraState={cameraState}
-                    cameraError={cameraError}
-                    isModelLoading={false}
-                    needsManualPlay={needsManualPlay}
-                    videoRef={videoRef}
-                    canvasRef={canvasRef}
-                    onStart={startCamera}
-                    onStop={stopCamera}
-                    onRestart={restartCamera}
-                    onManualPlay={handleManualPlay}
-                  >
-                    {/* Prediction overlay inside camera */}
-                    {cameraState === "active" && predictionResult && lessonStatus === "practicing" && (
-                      <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
-                        <div className="bg-black/70 rounded-lg px-3 py-2">
-                          <GestureDetectionLoader
-                            confidence={Math.round(predictionResult.confidence * 100)}
-                            message="Analyzing"
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {cameraState === "active" && predictionResult && (
-                      <div
-                        className="absolute bottom-20 right-3 z-10 text-white text-4xl font-black px-4 py-2 rounded-lg shadow-lg transition duration-300"
-                        style={{
-                          backgroundColor: predictionResult.prediction === targetSign ? "#22C55E" : "#7D54FF",
-                          opacity: predictionResult.confidence > 0.5 ? 1 : 0.6,
-                          transform: `scale(${predictionResult.confidence > 0.7 ? 1.1 : 1})`,
-                        }}
-                      >
-                        {predictionResult.prediction}
-                        <div className="text-xs text-center text-white/80 font-normal mt-0.5">
-                          {Math.round(predictionResult.confidence * 100)}%
-                        </div>
-                      </div>
-                    )}
-                  </CameraPanel>
-
-                  {/* Controls */}
-                  <div className="flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2">
-                      {/* The camera panel has its own Start button when the camera is off. */}
-                      {cameraState === "off" || cameraState === "stopped" ? null : (
-                        <>
-                          <Button variant="outline" size="sm" icon={CameraOff} onClick={stopCamera}>
-                            Stop
-                          </Button>
-                          <Button variant="outline" size="sm" icon={RefreshCw} onClick={restartCamera}>
-                            Restart
-                          </Button>
-                          {cameraState === "active" && lessonStatus === "idle" && (
-                            <Button variant="primary" size="sm" icon={Play} onClick={startPractice}>
-                              Start Practice
-                            </Button>
-                          )}
-                          {cameraState === "active" && lessonStatus === "practicing" && (
-                            <Button variant="outline" size="sm" icon={RefreshCw} onClick={tryAgain}>
-                              Reset
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {/* XP counter */}
-                    <div className="flex items-center gap-2">
-                      {cameraState === "active" && (
-                        <span className="text-xs text-gray-400">
-                          {lessonStatus === "practicing" ? "Practicing" : "Ready"}
-                        </span>
-                      )}
-                    </div>
+            {/* ─── Right Column: Interactive Camera Workspace ─── */}
+            <div
+              className={`flex flex-col min-h-0 h-full rounded-2xl bg-zinc-950 border border-zinc-800 p-3 lg:p-4 gap-3 overflow-hidden justify-between ${
+                mobileTab === "camera" ? "flex" : "hidden lg:flex"
+              }`}
+            >
+              {/* Top Camera Bar: Recognition Pill + Session XP */}
+              <div className="flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/10 rounded-full px-3 py-1">
+                    <span
+                      className={`size-2 rounded-full ${
+                        cameraState === "active" ? "bg-green-400 animate-pulse" : "bg-zinc-500"
+                      }`}
+                    />
+                    <span className="text-xs text-zinc-300 font-medium">
+                      {cameraState === "active"
+                        ? phase === "countdown"
+                          ? "Starting..."
+                          : phase === "success"
+                          ? "Completed"
+                          : "Recognizing"
+                        : "Camera Off"}
+                    </span>
                   </div>
 
-                  {/* Progress bar */}
-                  {cameraState === "active" && lessonStatus === "practicing" && (
-                    <div className="shrink-0">
-                      <div className="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>Progress</span>
-                        <span>{Math.round(progress)}%</span>
-                      </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full origin-left bg-brand rounded-full transition-transform duration-300"
-                          style={{ transform: `scaleX(${Math.round(progress) / 100})` }}
-                        />
-                      </div>
-                    </div>
+                  {predictionResult && phase === "recognizing" && (
+                    <span className="text-xs bg-zinc-900 border border-white/10 text-zinc-300 px-2.5 py-1 rounded-full font-mono">
+                      Detected: <strong className="text-white">{predictionResult.prediction}</strong> (
+                      {Math.round(predictionResult.confidence * 100)}%)
+                    </span>
                   )}
+                </div>
 
-                  {/* Live Feedback Card */}
-                  {cameraState === "active" && (
-                    <FeedbackCard
-                      type={feedbackType}
-                      message={feedbackMessage}
-                      confidence={predictionResult?.confidence}
-                      xpEarned={xpToast?.xp}
-                      targetSign={targetSign}
-                      detectedSign={predictionResult?.prediction}
-                      onTryAgain={tryAgain}
-                    />
+                <div className="flex items-center gap-2">
+                  {sessionXp > 0 && (
+                    <span className="text-xs font-semibold bg-brand/20 text-brand-soft border border-brand/30 px-3 py-1 rounded-full flex items-center gap-1">
+                      <Sparkles className="size-3 text-amber-300" />
+                      +{sessionXp} XP
+                    </span>
                   )}
                 </div>
               </div>
+
+              {/* ─── Dominant Camera Feed ─── */}
+              <CameraPanel
+                cameraState={cameraState}
+                cameraError={cameraError}
+                isModelLoading={false}
+                needsManualPlay={needsManualPlay}
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                handDetected={handDetected}
+                isCorrectCandidate={isCorrectCandidate}
+                onStart={startCamera}
+                onStop={stopCamera}
+                onRestart={restartCamera}
+                onManualPlay={handleManualPlay}
+              >
+                {/* 3-2-1-GO Countdown Overlay */}
+                {phase === "countdown" && cameraState === "active" && (
+                  <CountdownOverlay
+                    targetSign={targetSign}
+                    onComplete={() => {
+                      setPhase("recognizing");
+                      setFeedbackState("waiting");
+                    }}
+                    onSkip={() => {
+                      setPhase("recognizing");
+                      setFeedbackState("waiting");
+                    }}
+                  />
+                )}
+              </CameraPanel>
+
+              {/* ─── Recognition Status & Stability Feedback ─── */}
+              <div className="shrink-0">
+                <FeedbackCard
+                  state={feedbackState}
+                  targetSign={targetSign}
+                  detectedSign={predictionResult?.prediction}
+                  confidence={predictionResult?.confidence}
+                  holdProgress={holdProgress}
+                  nextSignLabel={nextSignLabel}
+                  xpEarned={xpToast?.xp}
+                  onContinue={startNextSign}
+                  onRetry={restartAttempt}
+                />
+              </div>
+
+              {/* ─── Camera & Interaction Controls ─── */}
+              <div className="flex items-center justify-between shrink-0 pt-1 border-t border-zinc-850">
+                <div className="flex items-center gap-2">
+                  {cameraState === "active" && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={CameraOff}
+                        onClick={stopCamera}
+                        className="!text-zinc-400 hover:!text-white !bg-zinc-900 border !border-white/10 text-xs"
+                      >
+                        Pause
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={RefreshCw}
+                        onClick={restartAttempt}
+                        className="!text-zinc-400 hover:!text-white !bg-zinc-900 border !border-white/10 text-xs"
+                      >
+                        Reset Sign
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* Status Hint */}
+                <div className="text-[11px] text-zinc-500 font-medium">
+                  {phase === "countdown"
+                    ? "Skip with Space"
+                    : phase === "success"
+                    ? "Press Space to continue"
+                    : cameraState === "active"
+                    ? "Keep hand centered"
+                    : "Ready"}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+          </main>
+        )}
       </div>
 
-      {/* Lesson Completion Screen */}
-      {lessonStatus === "complete" && (
+      {/* ─── Modals & Celebrations ─── */}
+      {xpToast && (
+        xpToast.achievements.length > 0 ? (
+          <AchievementCelebration
+            name={xpToast.achievements[0]}
+            icon="✨"
+            xp={xpToast.xp}
+            onDone={() => setXpToast(null)}
+          />
+        ) : (
+          <XPToast xp={xpToast.xp} achievements={[]} onDone={() => setXpToast(null)} />
+        )
+      )}
+
+      {levelUp !== null && <LevelUpCelebration newLevel={levelUp} onDone={() => setLevelUp(null)} />}
+
+      {/* Lesson Complete Screen */}
+      {phase === "complete" && (
         <CompletionScreen
           accuracy={accuracy}
           xpEarned={sessionXp}
           totalXp={sessionXp}
           timeTaken={Math.floor((Date.now() - sessionStartTime) / 1000)}
-          signsMastered={totalCorrect}
+          signsMastered={masteredSigns.size}
           totalSigns={currentLessons.length}
           achievementsUnlocked={xpToast?.achievements.length ?? 0}
           onContinue={handleLessonComplete}

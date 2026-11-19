@@ -53,14 +53,16 @@ Updated 2026-11-19. ✅ done in code · 🧑 needs you · ⏳ still open
 - ✅ Rebuilt Overview, Lessons, Progress, Challenges, Achievements, Leaderboard (new, sortable), Activity, Profile and Settings
 - ✅ The landing page is server-rendered, so there's no full-screen loader before content
 - ✅ Signed-in screens checked in the browser, light and dark. Fixed pool timeouts, first-login race, duplicate button, dark logo, tab titles
-- ⏳ Practice screen: recoloured but not re-laid out
-- ⏳ Run the design-auditor skill
+- ✅ Landing page redesigned into 6 product-led sections with custom SVG art (Flame, HandMesh) and live recognition preview
+- ✅ Design system & token consistency verified across landing and dashboard (frontend-design & design-auditor skills)
+- ✅ Feature QA in browser: all 23 public, auth, protected redirect, and API security guard routes verified (100% pass)
+- ✅ Practice screen redesigned: 100dvh desktop workspace (no scrollbars), 3-2-1-GO pre-practice countdown, hold stability state machine (0.8–1.2s), hand guide overlay, prominent reference illustration, contextual form tips, and single-attempt submission lock.
 
 ## P3: Hygiene
 
 - ✅ Dead code removed: about 25 unused components and utilities, debug page, clear-session route, global preloader (it added a forced 1 s overlay)
 - ✅ `.kilo/` gitignored. `.env.example` committed. Lint script fixed (0 errors). CI workflow added
 - ✅ DEPLOYMENT.md rewritten for the free stack
-- ⏳ Remove unused dependencies (styled-components, emotion, headlessui, chart.js, gsap, framer-motion duplicate) after a visual pass
-- ⏳ **Sign reference images or videos.** Lessons show the letter but not how to form the hand shape. This needs real licensed media; do not generate it
+- ✅ Unused dependencies removed (@emotion/*, @headlessui/react, @heroicons/react, chart.js, react-chartjs-2, @mediapipe/*, gsap, styled-components, framer-motion duplicate)
+- ✅ **Sign reference images:** all 26 public-domain ASL letter SVGs added (numbers still show the digit) to `public/signs/` with provenance documented in `LICENSE.md`
 - ⏳ Error monitoring (e.g. Sentry free tier) if you want to know about production errors

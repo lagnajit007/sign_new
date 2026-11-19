@@ -1,113 +1,33 @@
-"use client"
+import Link from "next/link";
+import Image from "next/image";
 
-import Link from "next/link"
-import Image from "next/image"
-import { SignedOut, SignedIn, SignInButton, SignUpButton } from "@clerk/nextjs"
-import { Button } from "@/components/arc/button/button"
-
-const footerLinks = {
-  learn: [
-    { label: "Lessons", href: "/dashboard/lessons" },
-    { label: "Challenges", href: "/dashboard/challenges" },
-    { label: "Community", href: "/dashboard/community" },
-    { label: "Progress", href: "/dashboard/progress" },
-  ],
-  company: [
-    { label: "About Us", href: "/about" },
-    { label: "Our Story", href: "/#story" },
-    { label: "FAQ", href: "/#faq" },
-  ],
-  legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-  ],
-}
+const LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+  { href: "/sign-in", label: "Sign in" },
+];
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-brand-soft">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div className="sm:col-span-2 lg:col-span-1">
-            <Image src="/sanjog-logo.svg" alt="Sanjog" width={110} height={36} className="object-contain mb-4" />
-            <p className="text-ink-soft text-sm leading-relaxed max-w-xs">
-              Learn the sign language alphabet and numbers with live feedback from your webcam.
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-bold text-ink mb-4">Learn</h3>
-            <ul className="space-y-3">
-              {footerLinks.learn.map((link) => (
-                <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-ink-soft hover:text-brand transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-bold text-ink mb-4">Company</h3>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-ink-soft hover:text-brand transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-bold text-ink mb-4">Account</h3>
-            <ul className="space-y-3">
-              <SignedOut>
-                <li>
-                  <SignInButton mode="redirect">
-                    <Button variant="ghost" size="sm">Sign In</Button>
-                  </SignInButton>
-                </li>
-                <li>
-                  <SignUpButton mode="redirect">
-                    <Button variant="ghost" size="sm">Sign Up</Button>
-                  </SignUpButton>
-                </li>
-              </SignedOut>
-              <SignedIn>
-                <li>
-                  <Link href="/dashboard" className="text-sm text-ink-soft hover:text-brand transition-colors">
-                    Dashboard
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard/profile" className="text-sm text-ink-soft hover:text-brand transition-colors">
-                    Profile
-                  </Link>
-                </li>
-              </SignedIn>
-              {footerLinks.legal.map((link) => (
-                <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-ink-soft hover:text-brand transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+    <footer className="border-t border-line">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+        <div className="max-w-sm">
+          <Link href="/" className="flex items-center gap-2 rounded-lg" aria-label="Sanjog home">
+            <Image src="/S-logo.svg" alt="" width={20} height={20} className="dark:invert" />
+            <span className="text-sm font-semibold text-fg">Sanjog</span>
+          </Link>
+          <p className="mt-2 text-sm text-fg-subtle">Practise the sign language alphabet and numbers with live feedback from your webcam.</p>
         </div>
-
-        <div className="mt-12 pt-8 border-t border-brand-soft flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-ink-soft">
-            &copy; {new Date().getFullYear()} Sanjog. All rights reserved.
-          </p>
-          <p className="text-xs text-ink-soft">
-            Built with care for accessible communication.
-          </p>
-        </div>
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
+          {LINKS.map((l) => (
+            <Link key={l.href} href={l.href} className="rounded text-sm text-fg-muted transition-colors hover:text-fg">
+              {l.label}
+            </Link>
+          ))}
+        </nav>
       </div>
+      <div className="mx-auto max-w-6xl px-4 pb-8 text-xs text-fg-subtle sm:px-6">© {new Date().getFullYear()} Sanjog</div>
     </footer>
-  )
+  );
 }

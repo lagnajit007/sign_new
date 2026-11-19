@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, Flame, Hand, Sparkles, Target } from "lucide-react";
+import { CheckCircle2, Hand, Sparkles, Target } from "lucide-react";
+import { Flame } from "@/components/art/flame";
 import { useApi } from "@/hooks/use-api";
 import { ActivityBars } from "@/components/app/charts";
 import {
@@ -71,7 +72,7 @@ export default function ProgressPage() {
         ) : (
           <>
             <Stat label="Total XP" icon={<Sparkles />} value={s?.xp.toLocaleString() ?? "0"} />
-            <Stat label="Streak" icon={<Flame />} value={`${s?.streakDays ?? 0} days`} />
+            <Stat label="Streak" icon={<Flame animated={(s?.streakDays ?? 0) > 0} dim={(s?.streakDays ?? 0) === 0} />} value={`${s?.streakDays ?? 0} days`} />
             <Stat label="Signs mastered" icon={<CheckCircle2 />} value={`${s?.lessonsCompleted ?? 0} / 36`} />
             <Stat
               label="Accuracy"

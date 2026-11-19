@@ -71,6 +71,17 @@
   --animate-sj-enter: sj-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Streak flame flicker (src/components/art/flame.tsx): transform only. */
+@keyframes sj-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  30% { transform: scale(0.97, 1.04) skewX(-1.5deg); }
+  60% { transform: scale(1.02, 0.97) skewX(1deg); }
+}
+.sj-flame-outer, .sj-flame-mid, .sj-flame-core { transform-box: fill-box; transform-origin: 50% 100%; }
+.sj-flame-outer { animation: sj-flicker 2.4s ease-in-out infinite; }
+.sj-flame-mid { animation: sj-flicker 1.8s ease-in-out -0.4s infinite; }
+.sj-flame-core { animation: sj-flicker 1.3s ease-in-out -0.8s infinite; }
+
 @keyframes sj-enter {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
@@ -150,9 +161,10 @@ html[data-font-scale] {
   body {
     @apply bg-background text-foreground;
   }
-  /* Poppins is the marketing display face only; the app uses Inter/Geist. */
-  [data-surface="marketing"] :is(h1, h2, h3, h4, h5, h6), .font-heading {
-    font-family: var(--font-heading), Poppins, var(--font-sans), sans-serif;
+  /* One type system everywhere: Geist for display headings, Inter for text. */
+  [data-surface="marketing"] :is(h1, h2, h3), .font-heading {
+    font-family: var(--font-geist), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.015em;
   }
 }
 
@@ -246,7 +258,7 @@ html {
   html {
     scroll-behavior: auto;
   }
-  .animate-sj-enter { animation: none; }
+  .animate-sj-enter, .sj-flame-outer, .sj-flame-mid, .sj-flame-core { animation: none; }
   
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

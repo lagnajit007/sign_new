@@ -3,18 +3,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 
-// Public routes — everything else requires authentication
-const isPublic = createRouteMatcher([
-  '/',
-  '/about',
-  '/terms',
-  '/privacy',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/_not-found',
-  '/not-found',
+// Only the app and its API need a session. Everything else (marketing pages,
+// auth pages, unknown URLs → 404) is public.
+const isProtected = createRouteMatcher(['/dashboard(.*)', '/api(.*)']);
+
+// API routes that must work without a session.
+const isPublicApi = createRouteMatcher([
   '/api/health',
-  '/api/stats/public',
   // Clerk webhooks are verified with a svix signature inside the handler.
   '/api/webhooks/clerk',
 ]);
@@ -22,14 +17,14 @@ const isPublic = createRouteMatcher([
 const isClerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
+  if (!isProtected(req) || isPublicApi(req)) return NextResponse.next();
+
   // Never expose a protected route when authentication is misconfigured.
-  if (!isClerkConfigured && !isPublic(req)) {
+  if (!isClerkConfigured) {
     return new NextResponse('Authentication is not configured.', { status: 503 });
   }
 
-  if (isPublic(req)) return NextResponse.next();
-
-  // All other routes — including /dashboard — are protected server-side
+  // /dashboard and the API are protected server-side
   try {
     await auth.protect();
     return NextResponse.next();

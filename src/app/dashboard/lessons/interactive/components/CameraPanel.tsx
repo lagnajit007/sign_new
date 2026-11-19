@@ -1,8 +1,9 @@
 'use client';
 
-import { Camera, CameraOff, RefreshCw, Play, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Camera, CameraOff, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import Button from '@/components/Button';
 import { CameraInitLoader } from '@/components/loaders/ProcessLoaders';
+import HandGuideOverlay from './HandGuideOverlay';
 
 export type CameraState = 'off' | 'requesting' | 'active' | 'stopped' | 'denied' | 'error';
 
@@ -13,6 +14,8 @@ interface CameraPanelProps {
   needsManualPlay: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  handDetected?: boolean;
+  isCorrectCandidate?: boolean;
   onStart: () => void;
   onStop: () => void;
   onRestart: () => void;
@@ -27,16 +30,19 @@ export default function CameraPanel({
   needsManualPlay,
   videoRef,
   canvasRef,
+  handDetected = false,
+  isCorrectCandidate = false,
   onStart,
   onRestart,
   onManualPlay,
   children,
 }: CameraPanelProps) {
-  getStateDisplay(cameraState);
-
   return (
-    <div className="relative bg-black rounded-xl overflow-hidden flex-1" style={{ minHeight: '320px', aspectRatio: '4/3' }}>
-      {/* Video element - always rendered in DOM for stable ref */}
+    <div
+      className="relative bg-zinc-950 rounded-2xl overflow-hidden flex-1 min-h-0 flex items-center justify-center border border-white/10"
+      style={{ aspectRatio: '4/3' }}
+    >
+      {/* Video element - always in DOM for ref stability */}
       <video
         ref={videoRef as React.Ref<HTMLVideoElement>}
         playsInline
@@ -44,141 +50,131 @@ export default function CameraPanel({
         width={640}
         height={480}
         className={`w-full h-full object-contain ${cameraState === 'active' ? '' : 'hidden'}`}
-        style={{ backgroundColor: '#000' }}
+        style={{ transform: 'scaleX(-1)' }} // Mirror view for natural interaction
       />
-      {/* Canvas overlay - always rendered for stable ref */}
+
+      {/* Canvas overlay for MediaPipe landmarks */}
       <canvas
         ref={canvasRef as React.Ref<HTMLCanvasElement>}
         width={640}
         height={480}
-        className={`absolute inset-0 w-full h-full pointer-events-none ${cameraState === 'active' ? '' : 'hidden'}`}
+        className={`absolute inset-0 w-full h-full pointer-events-none ${
+          cameraState === 'active' ? '' : 'hidden'
+        }`}
+        style={{ transform: 'scaleX(-1)' }} // Mirrored to match video
       />
-      {/* Manual play overlay */}
-      {cameraState === 'active' && needsManualPlay && <ManualPlayButton onClick={onManualPlay} />}
-      {/* Children overlay (prediction results, etc.) */}
-      {cameraState === 'active' && children}
 
-      {/* Camera stopped state */}
-      {cameraState === 'stopped' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-6">
-          <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center mb-4">
-            <CameraOff className="w-8 h-8 text-gray-400" />
-          </div>
-          <p className="text-lg font-medium mb-1">Camera Stopped</p>
-          <p className="text-sm text-gray-400 mb-6">Your camera has been turned off</p>
-          <Button variant="primary" icon={Camera} onClick={onStart}>
-            Start Camera
+      {/* Subtle hand positioning framing guide */}
+      {cameraState === 'active' && (
+        <HandGuideOverlay
+          handDetected={handDetected}
+          isCorrectCandidate={isCorrectCandidate}
+        />
+      )}
+
+      {/* Manual play overlay if browser prevented autoplay */}
+      {cameraState === 'active' && needsManualPlay && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 p-4">
+          <p className="text-sm text-white mb-3">Click to enable camera feed</p>
+          <Button variant="primary" size="sm" onClick={onManualPlay}>
+            Resume Playback
           </Button>
         </div>
       )}
 
-      {/* Camera off / idle state */}
-      {cameraState === 'off' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-white p-6">
-          <div className="relative mb-6">
-            <div className="w-24 h-24 rounded-full bg-brand/10 border-2 border-dashed border-brand/30 flex items-center justify-center">
-              <Camera className="w-10 h-10 text-brand/60" />
-            </div>
+      {/* Dynamic children (Countdown, Stability meter, Target badge) */}
+      {cameraState === 'active' && children}
+
+      {/* Camera stopped state */}
+      {cameraState === 'stopped' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 text-white p-6">
+          <div className="size-14 rounded-full bg-zinc-800 flex items-center justify-center mb-3">
+            <CameraOff className="size-6 text-zinc-400" />
           </div>
-          <p className="text-xl font-bold mb-2">Camera Off</p>
-          <p className="text-sm text-gray-400 text-center mb-8 max-w-xs">
-            Enable your camera to start practicing sign language with real-time AI feedback
+          <p className="text-base font-semibold mb-1">Camera Paused</p>
+          <p className="text-xs text-zinc-400 mb-5 text-center max-w-xs">
+            Recognition is paused. Resume when you're ready to practice.
+          </p>
+          <Button variant="primary" size="sm" icon={Camera} onClick={onStart}>
+            Resume Camera
+          </Button>
+        </div>
+      )}
+
+      {/* Camera off / Initial state */}
+      {cameraState === 'off' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-white p-6 text-center">
+          <div className="size-20 rounded-full bg-brand/10 border-2 border-dashed border-brand/30 flex items-center justify-center mb-4">
+            <Camera className="size-8 text-brand" />
+          </div>
+          <h2 className="text-lg font-bold mb-1">Start Camera Practice</h2>
+          <p className="text-xs text-zinc-400 max-w-xs mb-6 leading-relaxed">
+            Enable your webcam to practice sign language with real-time in-browser AI recognition. Video never leaves your device.
           </p>
           <Button
             variant="primary"
-            size="lg"
+            size="md"
             icon={Camera}
             onClick={onStart}
             loading={isModelLoading}
-            className="shadow-lg shadow-[#7D54FF]/25"
+            className="shadow-lg shadow-brand/20"
           >
-            {isModelLoading ? "Loading Model…" : "Start Camera"}
+            {isModelLoading ? 'Loading AI Model…' : 'Start Camera'}
           </Button>
           {isModelLoading && (
-            <div className="mt-6">
-              <CameraInitLoader message="Initializing Sign Recognition" />
+            <div className="mt-4">
+              <CameraInitLoader message="Loading Sign Recognition..." />
             </div>
           )}
         </div>
       )}
 
-      {/* Requesting permission state */}
+      {/* Requesting permission */}
       {cameraState === 'requesting' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6">
-          <CameraInitLoader message="Requesting Camera Access" />
-          <p className="text-sm text-gray-400 mt-4 text-center max-w-xs">
-            Please allow camera access when prompted by your browser
+          <CameraInitLoader message="Requesting Camera Access..." />
+          <p className="text-xs text-zinc-400 mt-3 text-center max-w-xs">
+            Please allow camera access in your browser prompt.
           </p>
         </div>
       )}
 
-      {/* Permission denied state */}
+      {/* Permission denied */}
       {cameraState === 'denied' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-900/20 text-white p-6">
-          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-            <ShieldAlert className="w-8 h-8 text-red-400" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/40 text-white p-6 text-center">
+          <div className="size-14 rounded-full bg-red-500/20 flex items-center justify-center mb-3">
+            <ShieldAlert className="size-6 text-red-400" />
           </div>
-          <p className="text-lg font-bold mb-2">Camera Access Denied</p>
-          <p className="text-sm text-gray-300 text-center mb-6 max-w-sm">
-            We need camera access to recognize your signs. Please update your browser settings to allow camera access for this site.
+          <p className="text-base font-bold mb-1 text-red-300">Camera Access Denied</p>
+          <p className="text-xs text-zinc-300 mb-5 max-w-xs leading-relaxed">
+            Sanjog needs camera access to track your signs. Please enable camera permissions in your browser URL bar.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="secondary" icon={RefreshCw} onClick={onRestart}>
-              Try Again
-            </Button>
-          </div>
+          <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onRestart}>
+            Try Again
+          </Button>
         </div>
       )}
 
       {/* Error state */}
       {cameraState === 'error' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-orange-900/20 text-white p-6">
-          <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-4">
-            <AlertTriangle className="w-8 h-8 text-orange-400" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-orange-950/40 text-white p-6 text-center">
+          <div className="size-14 rounded-full bg-orange-500/20 flex items-center justify-center mb-3">
+            <AlertTriangle className="size-6 text-orange-400" />
           </div>
-          <p className="text-lg font-bold mb-2">Camera Error</p>
-          <p className="text-sm text-gray-300 text-center mb-2 max-w-sm">{cameraError}</p>
-          <div className="flex flex-col sm:flex-row gap-3 mt-4">
-            <Button variant="secondary" icon={RefreshCw} onClick={onRestart}>
+          <p className="text-base font-bold mb-1 text-orange-300">Camera Error</p>
+          <p className="text-xs text-zinc-300 mb-5 max-w-xs leading-relaxed">
+            {cameraError || 'Unable to connect to camera device.'}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" icon={RefreshCw} onClick={onRestart}>
               Retry Camera
             </Button>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Refresh Page
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Refresh
             </Button>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function ManualPlayButton({ onClick }: { onClick: () => void }) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-50">
-      <Button variant="primary" size="lg" icon={Play} onClick={onClick} className="text-lg shadow-lg">
-        Click to Enable Camera
-      </Button>
-    </div>
-  );
-}
-
-function getStateDisplay(
-  state: CameraState
-): { title: string } {
-  switch (state) {
-    case 'off':
-      return { title: 'Camera Off' };
-    case 'requesting':
-      return { title: 'Requesting…' };
-    case 'active':
-      return { title: 'Camera Active' };
-    case 'stopped':
-      return { title: 'Camera Stopped' };
-    case 'denied':
-      return { title: 'Permission Denied' };
-    case 'error':
-      return { title: 'Camera Error' };
-    default:
-      return { title: 'Camera Off' };
-  }
 }

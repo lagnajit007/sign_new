@@ -16,7 +16,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-sans)", "Inter", "sans-serif"],
-        heading: ["var(--font-heading)", "Poppins", "var(--font-sans)", "sans-serif"],
+        heading: ["var(--font-geist)", "var(--font-inter)", "sans-serif"],
       },
       colors: {
         border: "var(--border)",

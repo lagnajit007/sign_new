@@ -10,7 +10,6 @@ import { useTheme } from "next-themes";
 import {
   Award,
   BookOpen,
-  Flame,
   Hand,
   LayoutDashboard,
   LineChart,
@@ -30,6 +29,7 @@ import {
 } from "@/components/block/dashboard-shell";
 import { useApi } from "@/hooks/use-api";
 import { ProgressBar } from "@/components/app/primitives";
+import { Flame } from "@/components/art/flame";
 
 const NAVIGATION: DashboardShellNavSection[] = [
   {
@@ -118,7 +118,7 @@ function LevelCard({ me, failed }: { me: Me | null; failed: boolean }) {
       <div className="flex items-center justify-between">
         <span className="font-medium text-(--obsidian-dashboard-shell-foreground)">Level {me.level}</span>
         <span className="flex items-center gap-1 text-(--obsidian-dashboard-shell-text-muted)">
-          <Flame className="size-3.5 text-orange-500" aria-hidden />
+          <Flame size={11} animated={me.streakDays > 0} dim={me.streakDays === 0} />
           {me.streakDays} day{me.streakDays === 1 ? "" : "s"}
         </span>
       </div>

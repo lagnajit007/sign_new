@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Flame } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import { Flame } from "@/components/art/flame";
 import { useApi } from "@/hooks/use-api";
 import { Avatar } from "@/components/app/avatar";
 import { Badge, DemoBadge, EmptyState, ErrorState, PageBody, Panel, Skeleton } from "@/components/app/primitives";
@@ -130,7 +131,7 @@ export default function LeaderboardPage() {
                     <td className="px-2 py-2.5 tabular-nums text-fg-muted">{e.level}</td>
                     <td className="px-2 py-2.5 tabular-nums text-fg-muted">
                       <span className="inline-flex items-center gap-1">
-                        {e.streakDays > 0 && <Flame className="size-3 text-orange-500" aria-hidden />}
+                        {e.streakDays > 0 && <Flame size={10} animated={false} />}
                         {e.streakDays}d
                       </span>
                     </td>

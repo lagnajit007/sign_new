@@ -1,4 +1,5 @@
-import { Award, CheckCircle2, Flame, Hand, Sparkles, Target } from "lucide-react";
+import { Award, CheckCircle2, Hand, Sparkles, Target } from "lucide-react";
+import { Flame } from "@/components/art/flame";
 import { redirect } from "next/navigation";
 import { getOrCreateUser } from "@/lib/user";
 import { computeUserStats, ALPHABET_COUNT, NUMBER_COUNT } from "@/lib/stats";
@@ -129,7 +130,7 @@ export default async function OverviewPage() {
         />
         <Stat
           label="Streak"
-          icon={<Flame />}
+          icon={<Flame animated={user.streakDays > 0} dim={user.streakDays === 0} />}
           value={`${user.streakDays} day${user.streakDays === 1 ? "" : "s"}`}
           hint={todayCorrect > 0 ? "Practised today" : "Practise today to keep it going"}
         />

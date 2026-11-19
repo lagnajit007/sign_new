@@ -5,10 +5,10 @@ import type { NextConfig } from "next";
 const MODEL_HOSTS = "https://tfhub.dev https://www.kaggle.com https://*.kaggle.com https://storage.googleapis.com";
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
   // A stray lockfile in the home directory confuses workspace-root detection.
   outputFileTracingRoot: path.join(__dirname),
-
-  transpilePackages: ['@mediapipe/hands', '@mediapipe/drawing_utils'],
 
   serverExternalPackages: ['@prisma/client', 'prisma'],
 
@@ -62,21 +62,6 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
-
-  compiler: {
-    styledComponents: true,
-  },
-
-  webpack: (config) => {
-    config.experiments = { ...config.experiments, asyncWebAssembly: true };
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      path: false,
-      os: false,
-    };
-    return config;
-  },
 
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
 };

@@ -1,188 +1,95 @@
-import Link from "next/link"
-import { ArrowLeft, Heart, Eye, Globe, Code, MapPin, Mail } from "lucide-react"
+import Link from "next/link";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 
-const roadmap = [
-  { year: "2023", title: "Research & Prototype", desc: "Initial thesis project exploring AI sign language recognition." },
-  { year: "2024", title: "Post-Graduation Development", desc: "Expanded beyond academic prototype with improved AI." },
-  { year: "2025", title: "Production Platform", desc: "Full rewrite with modern tech stack and gamified experience." },
-  { year: "2026", title: "Community Growth", desc: "Expanding sign language support and learning community." },
-  { year: "2027+", title: "Future Vision", desc: "Mobile apps, more sign languages, educational partnerships." },
-]
+export const metadata = {
+  title: "About · Sanjog",
+  description: "Why Sanjog exists, how it started and how it works.",
+};
+
+const STORY = [
+  {
+    year: "2023",
+    title: "Final-year project",
+    body: "Sanjog began as a Bachelor of Computer Science thesis by a team of five students, exploring whether a webcam could give useful feedback on fingerspelling.",
+  },
+  {
+    year: "2024",
+    title: "Beyond the prototype",
+    body: "After graduating, the team kept going: a better-trained model for A–Z and 0–9 and a sturdier architecture.",
+  },
+  {
+    year: "2025",
+    title: "A real product",
+    body: "A full rewrite with lessons, progress tracking, streaks, achievements and a community leaderboard.",
+  },
+  {
+    year: "Next",
+    title: "What's coming",
+    body: "More signs beyond the alphabet and numbers, words and phrases, and better recognition in difficult lighting.",
+  },
+];
 
 export default function AboutPage() {
   return (
-    <div data-surface="marketing" className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-20">
-        <Link href="/" className="inline-flex items-center gap-2 text-ink-soft hover:text-brand text-sm font-medium mb-8 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Home
-        </Link>
-
-        <h1 className="text-4xl sm:text-5xl font-bold text-ink mb-4">About Sanjog</h1>
-        <p className="text-lg text-ink-soft mb-16 max-w-2xl">
-          Making sign language accessible through the power of AI and a deep commitment to inclusive communication.
+    <div data-surface="marketing" className="min-h-screen bg-canvas text-fg">
+      <Navbar />
+      <main className="mx-auto max-w-3xl px-4 pb-24 pt-14 sm:px-6 md:pt-20">
+        <p className="text-sm font-medium text-brand">About</p>
+        <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight sm:text-5xl">Making sign language practice free</h1>
+        <p className="mt-5 text-[17px] leading-relaxed text-fg-muted">
+          Around 70 million deaf people use a sign language as their first language, according to the World Federation of the
+          Deaf. Learning even the alphabet is a real step toward talking with them, but practice with feedback has usually meant
+          a class or a tutor. Sanjog gives you that feedback in your browser, for free.
         </p>
 
-        {/* Mission */}
-        <section className="mb-16">
-          <div className="bg-bg rounded-3xl p-8 md:p-12 border border-brand-soft">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
-                <Heart className="w-5 h-5 text-brand" />
-              </div>
-              <h2 className="text-2xl font-bold text-ink">Our Mission</h2>
-            </div>
-            <p className="text-ink-soft leading-relaxed text-lg">
-              To make sign language learning accessible, engaging, and effective for everyone —
-              using AI to provide real-time feedback that was previously only available through
-              expensive one-on-one instruction.
+        <section className="mt-16" aria-labelledby="story-heading">
+          <h2 id="story-heading" className="font-display text-2xl font-semibold tracking-tight">Our story</h2>
+          <ol className="mt-6 border-l border-line">
+            {STORY.map((s) => (
+              <li key={s.year} className="relative pb-8 pl-6 last:pb-0">
+                <span aria-hidden className="absolute -left-[5px] top-1.5 size-2.5 rounded-full border-2 border-canvas bg-brand" />
+                <p className="font-mono text-xs text-brand">{s.year}</p>
+                <h3 className="mt-1 text-[16px] font-semibold">{s.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-fg-muted">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="mt-16" aria-labelledby="how-heading">
+          <h2 id="how-heading" className="font-display text-2xl font-semibold tracking-tight">How it works</h2>
+          <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-fg-muted">
+            <p>
+              Your browser finds 21 points on your hand using TensorFlow.js. A small neural network, trained on examples of each
+              hand shape, reads those points and names the letter or number with a confidence score. A sign counts as correct at
+              70% confidence or more.
+            </p>
+            <p>
+              Your video never leaves your device. When you finish a sign, the 42 numbers that describe your hand&apos;s shape are
+              sent to Sanjog, which runs the same model again to confirm the result before saving it and awarding XP.
             </p>
           </div>
         </section>
 
-        {/* Vision */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-sky/10 rounded-xl flex items-center justify-center">
-              <Eye className="w-5 h-5 text-sky" />
-            </div>
-            <h2 className="text-2xl font-bold text-ink">Our Vision</h2>
-          </div>
-          <p className="text-ink-soft leading-relaxed">
-            A world where language is never a barrier. We envision a future where anyone,
-            anywhere can learn sign language for free, supported by AI that makes practice
-            as effective as learning with a human tutor.
+        <section className="mt-16" aria-labelledby="access-heading">
+          <h2 id="access-heading" className="font-display text-2xl font-semibold tracking-tight">Accessibility</h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-fg-muted">
+            The app works with a keyboard and screen readers, supports light and dark themes, and lets you increase text size and
+            turn off animation in Settings. If something gets in your way, we want to know.
           </p>
         </section>
 
-        {/* Accessibility Commitment */}
-        <section className="mb-16">
-          <div className="bg-gradient-to-br from-brand/5 to-purple-50 rounded-3xl p-8 md:p-12 border border-brand/10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
-                <Globe className="w-5 h-5 text-brand" />
-              </div>
-              <h2 className="text-2xl font-bold text-ink">Accessibility Commitment</h2>
-            </div>
-            <div className="space-y-4 text-ink-soft leading-relaxed">
-              <p>
-                Accessibility isn&apos;t a feature — it&apos;s the foundation of everything we build.
-                Sanjog was created to bridge the communication gap between deaf and hearing communities.
-              </p>
-              <p>
-                Every design decision is guided by one question: &ldquo;Does this make sign language
-                learning more accessible?&rdquo; If the answer is no, we go back to the drawing board.
-              </p>
-              <p>
-                We are committed to keeping core learning features free, because we believe
-                communication is a human right, not a commodity.
-              </p>
-              <div className="flex flex-wrap gap-3 mt-6">
-                {["Free forever", "Browser-based", "Privacy-first", "Open feedback"].map((item) => (
-                  <span key={item} className="px-4 py-2 bg-surface rounded-full text-sm font-medium text-ink border border-brand-soft">
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Our Story */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gold/10 rounded-xl flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-gold" />
-            </div>
-            <h2 className="text-2xl font-bold text-ink">Our Story</h2>
-          </div>
-          <div className="space-y-4 text-ink-soft leading-relaxed">
-            <p>
-              Sanjog started as a final-year Bachelor of Computer Science project. A team of five students
-              shared a common observation: sign language learning tools were either expensive, ineffective,
-              or required in-person instruction.
-            </p>
-            <p>
-              They set out to build something different — a platform that uses AI to give learners
-              the same quality of feedback they would get from a human teacher, but accessible from
-              anywhere, at any time, for free.
-            </p>
-            <p>
-              After graduation, the project didn&apos;t end. The team continued refining the AI models,
-              redesigning the user experience, and rebuilding the platform with modern technology.
-              What started as a thesis experiment is now an evolving learning platform that the
-              team continues to test and improve.
-            </p>
-          </div>
-        </section>
-
-        {/* Technology */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-coral/10 rounded-xl flex items-center justify-center">
-              <Code className="w-5 h-5 text-coral" />
-            </div>
-            <h2 className="text-2xl font-bold text-ink">Technology</h2>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {[
-              { label: "Frontend", value: "Next.js, Tailwind CSS, Framer Motion" },
-              { label: "AI/ML", value: "TensorFlow.js, Handpose model, custom gesture classifier" },
-              { label: "Backend", value: "Next.js API routes, Prisma ORM" },
-              { label: "Database", value: "PostgreSQL via Supabase" },
-              { label: "Auth", value: "Clerk authentication" },
-              { label: "Animation", value: "GSAP, ScrollTrigger, Framer Motion" },
-            ].map((tech) => (
-              <div key={tech.label} className="bg-bg rounded-xl p-4 border border-brand-soft">
-                <div className="text-xs text-ink-soft mb-1">{tech.label}</div>
-                <div className="text-sm font-semibold text-ink">{tech.value}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Roadmap */}
-        <section className="mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-pink/10 rounded-xl flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-pink" />
-            </div>
-            <h2 className="text-2xl font-bold text-ink">Roadmap</h2>
-          </div>
-          <div className="space-y-4">
-            {roadmap.map((item) => (
-              <div key={item.year} className="flex items-start gap-4 bg-bg rounded-xl p-4 border border-brand-soft">
-                <span className="text-xs font-bold text-brand bg-brand-soft px-2.5 py-1 rounded-full flex-shrink-0 mt-0.5">
-                  {item.year}
-                </span>
-                <div>
-                  <div className="text-sm font-semibold text-ink">{item.title}</div>
-                  <div className="text-xs text-ink-soft">{item.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Contact */}
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
-              <Mail className="w-5 h-5 text-brand" />
-            </div>
-            <h2 className="text-2xl font-bold text-ink">Contact</h2>
-          </div>
-          <p className="text-ink-soft mb-4">
-            Have questions, feedback, or want to contribute? We&apos;d love to hear from you.
-          </p>
-          <Link
-            href="mailto:hello@sanjog.app"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white rounded-full text-sm font-semibold hover:bg-brand-dark transition"
-          >
-            <Mail className="w-4 h-4" />
-            hello@sanjog.app
+        <div className="mt-16 flex flex-wrap gap-3">
+          <Link href="/sign-up" className="inline-flex h-11 items-center rounded-lg bg-brand px-5 text-[15px] font-medium text-brand-fg hover:bg-brand-hover">
+            Start practising free
           </Link>
-        </section>
-      </div>
+          <Link href="/" className="inline-flex h-11 items-center rounded-lg border border-line px-5 text-[15px] font-medium text-fg hover:bg-subtle">
+            Back to home
+          </Link>
+        </div>
+      </main>
+      <Footer />
     </div>
-  )
+  );
 }

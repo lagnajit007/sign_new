@@ -1,11 +1,11 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from "motion/react";
 import { Trophy, Clock, Target, Zap, Award, ArrowRight } from 'lucide-react';
 import Button from '@/components/Button';
 import KpiCard from '@/components/KpiCard';
-import { triggerCelebration } from '@/lib/animations';
+import { celebrate } from '@/lib/celebrate';
 
 interface CompletionScreenProps {
   accuracy: number;
@@ -41,7 +41,7 @@ export default function CompletionScreen({
 
   useEffect(() => {
     if (achievementsUnlocked > 0 && trophyRef.current) {
-      triggerCelebration(trophyRef.current)
+      celebrate(trophyRef.current)
     }
   }, [achievementsUnlocked])
 

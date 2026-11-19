@@ -1,7 +1,7 @@
 import "./globals.css"
 import "@/components/arc/foundation.css"
 import type { Metadata, Viewport } from "next"
-import { Geist, Inter, Poppins } from "next/font/google"
+import { Geist, Inter } from "next/font/google"
 import ClientWrapper from '@/components/ClientWrapper'
 
 // Initialize the Inter font (body)
@@ -17,13 +17,6 @@ const geist = Geist({
   variable: '--font-geist',
 })
 
-// Poppins for headings (friendly, rounded, modern)
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['600', '700'],
-  display: 'swap',
-  variable: '--font-heading',
-})
 
 // Define metadata
 export const metadata: Metadata = {
@@ -61,7 +54,7 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   };
 
   return (
-    <html lang="en" data-accent="violet" className={`${geist.variable} ${inter.variable} ${poppins.variable}`} suppressHydrationWarning>
+    <html lang="en" data-accent="violet" className={`${geist.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased bg-bg text-ink">
         <ClientWrapper clerkProps={clerkProps}>
           {children}

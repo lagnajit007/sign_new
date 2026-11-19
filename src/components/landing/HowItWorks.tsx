@@ -1,82 +1,42 @@
-"use client"
+import { Reveal } from "./reveal";
 
-import { useRef } from "react"
-import { Webcam, ScanLine, BarChart3, Zap } from "lucide-react"
-import { useScrollReveal } from "@/lib/animations"
-
-const steps = [
+const STEPS = [
   {
-    icon: Webcam,
-    title: "Open Your Webcam",
-    description: "Position your hands in front of the camera. Sanjog uses real-time computer vision to track your gestures.",
-    color: "text-brand",
-    bg: "bg-brand/10",
+    title: "Allow your camera",
+    body: "Open a lesson and turn on your webcam. Nothing is recorded; tracking happens in your browser.",
   },
   {
-    icon: ScanLine,
-    title: "AI Recognizes Your Sign",
-    description: "Our TensorFlow-powered model analyzes your hand shape, position, and movement — giving instant feedback.",
-    color: "text-success",
-    bg: "bg-success/10",
+    title: "Make the sign",
+    body: "Copy the hand shape for the letter or number. Sanjog finds 21 points on your hand and reads the shape.",
   },
   {
-    icon: BarChart3,
-    title: "Track & Improve",
-    description: "Earn XP, build streaks, unlock achievements, and watch your accuracy grow with every practice session.",
-    color: "text-gold",
-    bg: "bg-gold/10",
+    title: "Get instant feedback",
+    body: "See what it recognised and how confident it is. Hold it steady to master the sign and earn XP.",
   },
-]
+];
 
 export default function HowItWorks() {
-  const sectionRef = useRef<HTMLDivElement>(null!)
-  useScrollReveal(sectionRef)
-
   return (
-    <section id="how-it-works" data-reveal ref={sectionRef} className="py-20 md:py-28 bg-bg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 text-brand text-sm font-semibold tracking-wide mb-4">
-            <Zap className="w-4 h-4" />
-            How It Works
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-ink mb-4">
-            Three Steps to Start Signing
+    <section id="how-it-works" className="scroll-mt-20 py-20 md:py-28" aria-labelledby="how-heading">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <Reveal className="max-w-2xl">
+          <h2 id="how-heading" className="font-display text-3xl font-semibold tracking-tight text-fg sm:text-4xl">
+            How it works
           </h2>
-          <p className="text-lg text-ink-soft">
-            No downloads, no setup. Just open your browser and begin learning.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
-          {steps.map((step, i) => {
-            const Icon = step.icon
-            return (
-              <div
-                key={step.title}
-                data-reveal-child
-                className="relative bg-surface rounded-2xl p-8 border border-brand-soft shadow-card hover:shadow-card-hover transition duration-300 hover:-translate-y-1"
-              >
-                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-brand text-white text-lg font-bold mb-6">
-                  {i + 1}
-                </div>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${step.bg}`}>
-                  <Icon className={`w-6 h-6 ${step.color}`} />
-                </div>
-                <h3 className="text-xl font-bold text-ink mb-3">{step.title}</h3>
-                <p className="text-ink-soft text-sm leading-relaxed">{step.description}</p>
-                {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-1/2 -right-6 text-brand-soft">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M5 12h14M13 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+          <p className="mt-3 text-[16px] text-fg-muted">Three steps, about ten seconds per sign.</p>
+        </Reveal>
+        <ol className="mt-12 grid gap-8 md:grid-cols-3 md:gap-6">
+          {STEPS.map((s, i) => (
+            <li key={s.title}>
+              <Reveal delay={i * 0.06} className="border-t border-line-strong pt-5">
+                <span className="font-mono text-xs text-brand">{String(i + 1).padStart(2, "0")}</span>
+                <h3 className="mt-3 text-lg font-semibold text-fg">{s.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-fg-muted">{s.body}</p>
+              </Reveal>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
-  )
+  );
 }

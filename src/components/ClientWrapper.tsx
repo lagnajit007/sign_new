@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import StyledComponentsRegistry from '@/lib/registry';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
@@ -57,14 +56,14 @@ export default function ClientWrapper({ children, clerkProps }: ClientWrapperPro
   };
 
   const content = (
-    <StyledComponentsRegistry>
+    <>
       <ThemeProvider attribute={['class', 'data-theme']} defaultTheme="light" enableSystem disableTransitionOnChange>
         <ClientErrorBoundary>
           <div className="min-h-screen bg-background text-foreground">{children}</div>
           <Toaster position="bottom-right" richColors closeButton />
         </ClientErrorBoundary>
       </ThemeProvider>
-    </StyledComponentsRegistry>
+    </>
   );
 
   return (

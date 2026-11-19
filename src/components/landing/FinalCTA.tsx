@@ -1,53 +1,37 @@
-"use client"
-
-import Link from "next/link"
-import { SignedOut, SignedIn, SignUpButton } from "@clerk/nextjs"
-import { ArrowRight } from "lucide-react"
-import { Button } from "@/components/arc/button/button"
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { HandMesh } from "@/components/art/hand-mesh";
+import { Reveal } from "./reveal";
 
 export default function FinalCTA() {
   return (
-    <section className="py-20 md:py-28 bg-zinc-950 relative overflow-hidden">
-
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
-          Ready to Start Signing?
-        </h2>
-
-        <p className="text-white/80 text-lg mb-10 max-w-xl mx-auto">
-          Free to use, no credit card required. Learn the sign language alphabet and numbers with live feedback from your webcam.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <SignedOut>
-            <SignUpButton mode="redirect">
-              <Button variant="secondary" size="lg">
-                Start Learning Free
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </SignUpButton>
-          </SignedOut>
-          <SignedIn>
+    <section className="px-4 pb-20 sm:px-6 md:pb-28">
+      <Reveal className="mx-auto max-w-6xl">
+        <div className="relative overflow-hidden rounded-2xl bg-zinc-950 px-6 py-14 text-center sm:px-12 md:py-20">
+          <HandMesh sign="5" className="pointer-events-none absolute -right-10 -top-6 size-72 text-white/[0.07] md:-right-4" />
+          <HandMesh sign="L" className="pointer-events-none absolute -bottom-12 -left-12 size-64 text-white/[0.05]" />
+          <h2 className="relative font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            Your first sign takes a minute.
+          </h2>
+          <p className="relative mx-auto mt-3 max-w-md text-[16px] text-white/70">
+            Free, in your browser, no credit card. Pick a letter and see how Sanjog reads your hand.
+          </p>
+          <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-zinc-950 rounded-full text-base font-semibold hover:bg-white/90 transition hover:scale-[1.02]"
+              href="/sign-up"
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-white px-5 text-[15px] font-medium text-zinc-950 transition-colors hover:bg-white/90"
             >
-              Go to Dashboard
-              <ArrowRight className="w-4 h-4" />
+              Start practising free <ArrowRight className="size-4" aria-hidden />
             </Link>
-          </SignedIn>
-          <Link
-            href="/about"
-            className="inline-flex items-center gap-2 px-8 py-3.5 border-2 border-white/30 text-white rounded-full text-base font-medium hover:bg-white/10 transition"
-          >
-            Read Our Accessibility Commitment
-          </Link>
+            <Link
+              href="/sign-in"
+              className="inline-flex h-11 items-center rounded-lg border border-white/20 px-5 text-[15px] font-medium text-white transition-colors hover:bg-white/10"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
-
-        <p className="text-white/60 text-sm mt-6">
-          Free forever · No credit card · Works in your browser
-        </p>
-      </div>
+      </Reveal>
     </section>
-  )
+  );
 }
