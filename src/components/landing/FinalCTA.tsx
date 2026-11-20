@@ -11,7 +11,14 @@ function DrawnHand() {
   const pts = [...BASE, ...POSES.L];
   const view = { once: true, margin: "0px 0px -15% 0px" } as const;
   return (
-    <svg viewBox="0 0 100 100" aria-hidden className="h-full w-auto drop-shadow-[0_0_24px_rgb(167_139_250/0.45)]">
+    <motion.svg
+      viewBox="0 0 100 100"
+      aria-hidden
+      className="h-full w-auto drop-shadow-[0_0_24px_rgb(167_139_250/0.45)]"
+      // Ambient: the hand breathes, barely. A held pose is never perfectly still.
+      animate={reduce ? undefined : { y: [0, -3, 0], rotate: [0, -1.2, 0] }}
+      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1.6 }}
+    >
       {BONES.map(([a, b], k) => (
         <motion.line
           key={k}
@@ -42,14 +49,14 @@ function DrawnHand() {
           transition={{ duration: 0.3, delay: 0.7 + k * 0.025 }}
         />
       ))}
-    </svg>
+    </motion.svg>
   );
 }
 
 export default function FinalCTA() {
   return (
-    <section className="px-3 sm:px-6" style={{ paddingTop: "var(--mk-section-y)" }} aria-labelledby="cta-heading">
-      <div className="relative mx-auto max-w-[1180px] overflow-hidden rounded-[28px] bg-[#0b0b0e] px-6 pb-16 pt-12 text-center sm:px-12 sm:pb-20">
+    <section className="px-3 py-3 sm:px-4 sm:py-4" aria-labelledby="cta-heading">
+      <div className="relative overflow-hidden rounded-[var(--mk-r-5)] bg-[#0b0b0e] px-6 pb-20 pt-16 text-center sm:px-12 sm:pb-20">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[70%] bg-[radial-gradient(ellipse_45%_60%_at_50%_30%,rgb(124_92_255/0.22),transparent_70%)]"
@@ -69,13 +76,13 @@ export default function FinalCTA() {
         <div className="relative mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/sign-up"
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-white pl-6 pr-5 text-[15px] font-medium text-zinc-950 transition-colors hover:bg-zinc-200 focus-visible:outline-violet-300"
+            className="group inline-flex h-12 items-center gap-2 rounded-full bg-white pl-6 pr-5 text-[15px] font-medium text-zinc-950 transition-[background-color,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-zinc-200 focus-visible:outline-violet-300 active:scale-[0.98] active:duration-100"
           >
-            Start practising free <ArrowRight className="size-4" aria-hidden />
+            Start practising free <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
           </Link>
           <a
             href="#how-it-works"
-            className="inline-flex h-12 items-center rounded-full px-6 text-[15px] font-medium text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18)] transition-colors hover:bg-white/[0.06] focus-visible:outline-violet-300"
+            className="inline-flex h-12 items-center rounded-full px-6 text-[15px] font-medium text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18)] transition-[background-color,box-shadow,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-white/[0.06] hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.32)] focus-visible:outline-violet-300 active:scale-[0.98] active:duration-100"
           >
             See how it works
           </a>

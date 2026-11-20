@@ -3,6 +3,7 @@ import "@/components/arc/foundation.css"
 import type { Metadata, Viewport } from "next"
 import { Geist, Inter } from "next/font/google"
 import ClientWrapper from '@/components/ClientWrapper'
+import SmoothScroll from '@/components/SmoothScroll'
 
 // Initialize the Inter font (body)
 const inter = Inter({
@@ -57,7 +58,7 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
     <html lang="en" data-accent="violet" className={`${geist.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased bg-bg text-ink">
         <ClientWrapper clerkProps={clerkProps}>
-          {children}
+          <SmoothScroll>{children}</SmoothScroll>
         </ClientWrapper>
       </body>
     </html>

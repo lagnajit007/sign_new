@@ -8,7 +8,7 @@ import { OAuthButtons, OrDivider } from "./OAuthButtons";
 
 type Step = "credentials" | "reset-code";
 
-export function SignInForm() {
+export function SignInForm({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
   const [step, setStep] = useState<Step>("credentials");
@@ -26,7 +26,7 @@ export function SignInForm() {
 
   const finish = async (sessionId: string | null) => {
     await setActive?.({ session: sessionId });
-    router.push("/dashboard");
+    router.push(redirectTo);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -143,7 +143,7 @@ export function SignInForm() {
         </SubmitButton>
       </form>
       <OrDivider />
-      <OAuthButtons mode="sign-in" />
+      <OAuthButtons mode="sign-in" redirectTo={redirectTo} />
     </>
   );
 }

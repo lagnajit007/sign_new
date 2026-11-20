@@ -398,6 +398,49 @@ html {
     0 12px 28px -10px rgb(40 36 70 / 0.24),
     0 3px 8px -3px rgb(24 24 27 / 0.1);
   --mk-tile: #f6f6f7;
+  /* Radius scale: chip, control, window, tile, plate. */
+  --mk-r-1: 6px;
+  --mk-r-2: 10px;
+  --mk-r-3: 14px;
+  --mk-r-4: 20px;
+  --mk-r-5: 28px;
+  --mk-rule: rgb(24 24 27 / 0.08);
+  /* Plates: soft fields product windows sit on (no hue jumps, just light). */
+  --mk-plate-dusk:
+    radial-gradient(120% 90% at 15% 0%, #efe9ff 0%, transparent 55%),
+    radial-gradient(110% 80% at 90% 10%, #fde9e2 0%, transparent 55%),
+    linear-gradient(180deg, #f3effc 0%, #ece8f7 100%);
+  --mk-plate-mist:
+    radial-gradient(120% 90% at 80% 0%, #eceaf6 0%, transparent 60%),
+    linear-gradient(180deg, #f4f4f7 0%, #eeeef3 100%);
+}
+
+/* Run-in heading: a dark lead sentence, then a quieter continuation. */
+[data-surface="marketing"] .mk-runin {
+  font-size: clamp(1.75rem, 3.2vw, 2.6rem);
+  line-height: 1.14;
+  letter-spacing: -0.026em;
+  font-weight: 500;
+  color: var(--sj-fg-subtle);
+  text-wrap: pretty;
+}
+[data-surface="marketing"] .mk-runin > strong {
+  font-weight: 500;
+  color: var(--sj-fg);
+}
+/* The page frame: hairline verticals around the content column. */
+[data-surface="marketing"] .mk-frame {
+  max-width: 1120px;
+  margin-inline: auto;
+}
+@media (min-width: 1024px) {
+  [data-surface="marketing"] .mk-frame {
+    border-inline: 1px solid var(--mk-rule);
+  }
+}
+[data-surface="marketing"] .mk-section {
+  padding-block: var(--mk-section-y);
+  border-bottom: 1px solid var(--mk-rule);
 }
 
 [data-surface="marketing"] .mk-display {
@@ -425,3 +468,20 @@ html {
   -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent);
   mask-image: linear-gradient(to bottom, black 70%, transparent);
 }
+
+/* Buttons and links on the marketing surface: one press feel everywhere. */
+[data-surface="marketing"] .mk-btn-primary {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  height: 3rem; padding-inline: 1.5rem 1.25rem; border-radius: 999px;
+  background: var(--sj-brand); color: var(--sj-brand-fg);
+  font-size: 15px; font-weight: 500;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 8px 20px -8px rgb(91 60 230 / 0.55);
+  transition: background-color 200ms, box-shadow 300ms, transform 300ms cubic-bezier(.22,1,.36,1);
+}
+[data-surface="marketing"] .mk-btn-primary:hover { background: var(--sj-brand-hover); box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 12px 26px -10px rgb(91 60 230 / 0.6); }
+[data-surface="marketing"] .mk-btn-primary:active { transform: scale(0.98); transition-duration: 100ms; }
+[data-surface="marketing"] .mk-link {
+  border-radius: 6px; font-size: 15px; font-weight: 500; color: var(--sj-fg-muted);
+  text-underline-offset: 4px; transition: color 200ms;
+}
+[data-surface="marketing"] .mk-link:hover { color: var(--sj-fg); text-decoration: underline; }

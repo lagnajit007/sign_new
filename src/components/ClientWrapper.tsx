@@ -4,22 +4,7 @@ import React from 'react';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
-import dynamic from 'next/dynamic';
-
-// Dynamically import ClerkProvider with SSR enabled. An error boundary wraps
-// it to catch any initialization failures so Clerk never crashes the page.
-const ClerkProviderWithFallback = dynamic(
-  () => import('@clerk/nextjs').then((mod) => {
-    const { ClerkProvider } = mod;
-    return ({ children, ...props }: { children: React.ReactNode } & Record<string, any>) => (
-      <ClerkProvider {...props}>{children}</ClerkProvider>
-    );
-  }),
-  {
-    ssr: true,
-    loading: () => null,
-  }
-);
+import { ClerkProvider } from '@clerk/nextjs';
 
 // Guards against ClerkProvider render errors during SSR/CSR. If Clerk fails,
 // child components (Sidebar, etc.) still render without Clerk context, so they
@@ -50,10 +35,6 @@ interface ClientWrapperProps {
 }
 
 export default function ClientWrapper({ children, clerkProps }: ClientWrapperProps) {
-  const enhancedClerkProps = {
-    ...clerkProps,
-    navigate: (to: string) => { window.location.href = to; }
-  };
 
   const content = (
     <>
@@ -68,9 +49,10 @@ export default function ClientWrapper({ children, clerkProps }: ClientWrapperPro
 
   return (
     <ClerkSafeBoundary fallback={content}>
-      <ClerkProviderWithFallback {...enhancedClerkProps}>
-        {content}
-      </ClerkProviderWithFallback>
+      {/* Imported statically: a dynamic import changed the tree between server and
+          client (shifting every useId below it), and Clerk's own router navigation
+          is client-side, so there's no need for full page reloads. */}
+      <ClerkProvider {...clerkProps}>{content}</ClerkProvider>
     </ClerkSafeBoundary>
   );
 } 

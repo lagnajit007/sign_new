@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 const FAQS = [
@@ -36,52 +34,71 @@ const FAQS = [
   },
 ];
 
+/** Plus that morphs into a minus: the vertical bar turns flat and fades. */
+function PlusMinus({ open }: { open: boolean }) {
+  return (
+    <span aria-hidden className="relative grid size-6 shrink-0 place-items-center rounded-full text-fg-subtle transition-colors duration-200 group-hover:text-fg">
+      <span className="absolute h-[1.5px] w-3 rounded-full bg-current" />
+      <span
+        className={cn(
+          "absolute h-3 w-[1.5px] rounded-full bg-current transition-[transform,opacity] duration-300 ease-[cubic-bezier(.22,1,.36,1)]",
+          open ? "rotate-90 opacity-0" : "rotate-0 opacity-100",
+        )}
+      />
+    </span>
+  );
+}
+
 export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
-  const reduce = useReducedMotion();
 
   return (
-    <section id="faq" className="scroll-mt-20 px-4 sm:px-6" style={{ paddingTop: "var(--mk-section-y)" }} aria-labelledby="faq-heading">
-      <div className="mx-auto grid max-w-[1080px] gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
+    <section id="faq" className="mk-section scroll-mt-20" aria-labelledby="faq-heading">
+      <div className="grid gap-10 px-5 sm:px-10 lg:grid-cols-[1fr_1.9fr] lg:gap-16 lg:px-14">
         <div>
           <h2 id="faq-heading" className="mk-h2 text-fg">
             Questions
           </h2>
           <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-fg-subtle">Anything else? Start a lesson and see for yourself. It takes a minute.</p>
         </div>
-        <ul className="border-t border-line">
+        <ul className="border-t border-[var(--mk-rule)]">
           {FAQS.map((item, i) => {
             const isOpen = open === i;
             return (
-              <li key={item.q} className="border-b border-line">
+              <li key={item.q} className="border-b border-[var(--mk-rule)]">
                 <h3>
                   <button
-                    className="flex w-full items-center justify-between gap-6 rounded-lg py-5 text-left text-[16px] font-medium text-fg transition-colors hover:text-fg-muted focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="group flex w-full items-center justify-between gap-6 rounded-[var(--mk-r-1)] py-6 text-left text-[16px] font-medium text-fg focus-visible:outline-2 focus-visible:outline-offset-2"
                     aria-expanded={isOpen}
                     aria-controls={`faq-${i}`}
+                    id={`faq-q-${i}`}
                     onClick={() => setOpen(isOpen ? null : i)}
                   >
                     {item.q}
-                    <Plus
-                      aria-hidden
-                      className={cn("size-4 shrink-0 text-fg-subtle transition-transform duration-[160ms]", isOpen && "rotate-45 text-fg")}
-                    />
+                    <PlusMinus open={isOpen} />
                   </button>
                 </h3>
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      id={`faq-${i}`}
-                      initial={reduce ? false : { height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={reduce ? undefined : { height: 0, opacity: 0 }}
-                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                      className="overflow-hidden"
-                    >
-                      <p className="max-w-[38rem] pb-6 pr-10 text-[15px] leading-relaxed text-fg-muted">{item.a}</p>
-                    </motion.div>
+                {/* Height animates on the grid track (0fr → 1fr): smooth, no measuring. */}
+                <div
+                  id={`faq-${i}`}
+                  role="region"
+                  aria-labelledby={`faq-q-${i}`}
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none",
+                    isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
                   )}
-                </AnimatePresence>
+                >
+                  <div className="overflow-hidden" inert={!isOpen}>
+                    <p
+                      className={cn(
+                        "max-w-[38rem] pb-7 pr-10 text-[15px] leading-relaxed text-fg-muted transition-[opacity,filter,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none",
+                        isOpen ? "translate-y-0 opacity-100 blur-0" : "-translate-y-1 opacity-0 blur-[2px]",
+                      )}
+                    >
+                      {item.a}
+                    </p>
+                  </div>
+                </div>
               </li>
             );
           })}

@@ -106,7 +106,7 @@ export default async function OverviewPage() {
     <PageBody className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[15px] font-medium text-fg">{firstName ? `Welcome back, ${firstName}` : "Welcome back"}</p>
+          <p className="text-[15px] font-medium text-fg">{stats.totalAttempts === 0 ? (firstName ? `Welcome, ${firstName}` : "Welcome") : firstName ? `Welcome back, ${firstName}` : "Welcome back"}</p>
           <p className="text-[13px] text-fg-subtle">
             {stats.totalAttempts === 0
               ? "Start your first lesson to see your progress here."

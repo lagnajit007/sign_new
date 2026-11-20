@@ -1,10 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import { safeRedirect } from "@/components/auth/safe-redirect";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { SignInForm } from "@/components/auth/SignInForm";
 
 export const metadata = { title: "Sign in · Sanjog" };
 
-export default function SignInPage() {
+export default async function SignInPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const to = safeRedirect((await searchParams).redirect_url);
+  // Already signed in: go straight to the app instead of showing a form that would refuse.
+  const { userId } = await auth();
+  if (userId) redirect(to);
+
   return (
     <AuthShell
       title="Sign in to Sanjog"
@@ -17,7 +25,7 @@ export default function SignInPage() {
         </>
       }
     >
-      <SignInForm />
+      <SignInForm redirectTo={to} />
     </AuthShell>
   );
 }

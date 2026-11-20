@@ -37,7 +37,7 @@ const PROVIDERS: { strategy: OAuthStrategy; label: string; Mark: () => React.JSX
  * redirect flow; a new person signing in with a provider gets an account
  * created on the way back (transfer handled in /sso-callback).
  */
-export function OAuthButtons({ mode }: { mode: "sign-in" | "sign-up" }) {
+export function OAuthButtons({ mode, redirectTo = "/dashboard" }: { mode: "sign-in" | "sign-up"; redirectTo?: string }) {
   const { signIn, isLoaded: inLoaded } = useSignIn();
   const { signUp, isLoaded: upLoaded } = useSignUp();
   const [busy, setBusy] = useState<OAuthStrategy | null>(null);
@@ -47,7 +47,7 @@ export function OAuthButtons({ mode }: { mode: "sign-in" | "sign-up" }) {
     setBusy(strategy);
     const target = mode === "sign-in" ? signIn : signUp;
     try {
-      await target.authenticateWithRedirect({ strategy, redirectUrl: "/sso-callback", redirectUrlComplete: "/dashboard" });
+      await target.authenticateWithRedirect({ strategy, redirectUrl: "/sso-callback", redirectUrlComplete: redirectTo });
     } catch {
       setBusy(null);
     }

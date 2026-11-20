@@ -427,7 +427,8 @@ export function usePracticeSession() {
   actionsRef.current = actions;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
+      // Keys can arrive with the document (not an element) as target, e.g. from extensions or tests.
+      const el = e.target instanceof Element ? e.target : null;
       if (el?.closest("input, textarea, select, button, a, [role='button'], [contenteditable='true']")) return;
       const s = stateRef.current;
       if (e.code === "Space") {

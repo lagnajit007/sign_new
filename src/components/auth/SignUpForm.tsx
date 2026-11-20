@@ -6,7 +6,7 @@ import { useSignUp } from "@clerk/nextjs";
 import { CodeInput, Field, FormError, PasswordField, SubmitButton, readClerkError } from "./fields";
 import { OAuthButtons, OrDivider } from "./OAuthButtons";
 
-export function SignUpForm() {
+export function SignUpForm({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
   const { signUp, setActive, isLoaded } = useSignUp();
   const router = useRouter();
   const [step, setStep] = useState<"details" | "verify">("details");
@@ -62,7 +62,7 @@ export function SignUpForm() {
       const res = await signUp.attemptEmailAddressVerification({ code: value });
       if (res.status === "complete") {
         await setActive({ session: res.createdSessionId });
-        router.push("/dashboard");
+        router.push(redirectTo);
         return;
       }
       const missing = res.missingFields?.join(", ");
@@ -160,7 +160,7 @@ export function SignUpForm() {
         </SubmitButton>
       </form>
       <OrDivider />
-      <OAuthButtons mode="sign-up" />
+      <OAuthButtons mode="sign-up" redirectTo={redirectTo} />
     </>
   );
 }

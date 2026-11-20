@@ -32,7 +32,7 @@ export default function Navbar() {
         scrolled || open ? "border-line bg-canvas/85 backdrop-blur-md" : "border-transparent bg-transparent",
       )}
     >
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-[1120px] items-center justify-between px-5 sm:px-10 lg:px-14">
         <Link href="/" className="flex items-center gap-2 rounded-lg" aria-label="Sanjog home">
           <Image src="/S-logo.svg" alt="" width={22} height={22} className="dark:invert" />
           <span className="text-[15px] font-semibold tracking-tight text-fg">Sanjog</span>

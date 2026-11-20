@@ -28,7 +28,7 @@ export default async function LandingPage() {
         Skip to main content
       </a>
       <Navbar />
-      <main id="main-content">
+      <main id="main-content" className="mk-frame border-b border-[var(--mk-rule)]">
         <HeroSection />
         {preview && <ProductPreview data={preview} />}
         <Features leaders={preview?.leaders ?? null} />
