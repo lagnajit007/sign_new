@@ -76,13 +76,13 @@ export default function FinalCTA() {
         <div className="relative mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/sign-up"
-            className="group inline-flex h-12 items-center gap-2 rounded-full bg-white pl-6 pr-5 text-[15px] font-medium text-zinc-950 transition-[background-color,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-zinc-200 focus-visible:outline-violet-300 active:scale-[0.98] active:duration-100"
+            className="group inline-flex h-11 items-center gap-2 rounded-lg bg-white pl-5 pr-[1.125rem] text-[15px] font-medium text-zinc-950 transition-[background-color,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-zinc-200 focus-visible:outline-violet-300 active:scale-[0.98] active:duration-100"
           >
             Start practising free <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
           </Link>
           <a
             href="#how-it-works"
-            className="inline-flex h-12 items-center rounded-full px-6 text-[15px] font-medium text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18)] transition-[background-color,box-shadow,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-white/[0.06] hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.32)] focus-visible:outline-violet-300 active:scale-[0.98] active:duration-100"
+            className="inline-flex h-11 items-center rounded-lg px-5 text-[15px] font-medium text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.18)] transition-[background-color,box-shadow,transform] duration-300 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-white/[0.06] hover:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.32)] focus-visible:outline-violet-300 active:scale-[0.98] active:duration-100"
           >
             See how it works
           </a>

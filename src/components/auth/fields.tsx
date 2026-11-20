@@ -72,7 +72,7 @@ export function SubmitButton({ busy, children, ...rest }: React.ButtonHTMLAttrib
     <button
       type="submit"
       disabled={busy || rest.disabled}
-      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand text-[15px] font-medium text-brand-fg transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-70"
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand text-[15px] font-medium text-brand-fg transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-70"
       {...rest}
     >
       {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}

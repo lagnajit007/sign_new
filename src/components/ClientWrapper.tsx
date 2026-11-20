@@ -5,6 +5,7 @@ import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import { ClerkProvider } from '@clerk/nextjs';
+import { usePathname } from 'next/navigation';
 
 // Guards against ClerkProvider render errors during SSR/CSR. If Clerk fails,
 // child components (Sidebar, etc.) still render without Clerk context, so they
@@ -35,10 +36,14 @@ interface ClientWrapperProps {
 }
 
 export default function ClientWrapper({ children, clerkProps }: ClientWrapperProps) {
+  // Light/dark is a dashboard preference. Everywhere else (landing, auth, legal
+  // pages) is always light, whatever was chosen in the dashboard or the OS.
+  const pathname = usePathname();
+  const forcedTheme = pathname?.startsWith('/dashboard') ? undefined : 'light';
 
   const content = (
     <>
-      <ThemeProvider attribute={['class', 'data-theme']} defaultTheme="light" enableSystem disableTransitionOnChange>
+      <ThemeProvider attribute={['class', 'data-theme']} defaultTheme="light" enableSystem forcedTheme={forcedTheme} disableTransitionOnChange>
         <ClientErrorBoundary>
           <div className="min-h-screen bg-background text-foreground">{children}</div>
           <Toaster position="bottom-right" richColors closeButton />

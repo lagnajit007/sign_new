@@ -68,10 +68,10 @@ function FeedbackDemo() {
     <div
       ref={root}
       aria-hidden
-      className="absolute bottom-0 left-7 right-0 top-7 overflow-hidden rounded-tl-[var(--mk-r-3)] bg-[#0d0d10] shadow-[var(--mk-shadow-window)] sm:left-10 sm:top-10"
+      className="absolute inset-x-7 bottom-0 top-7 overflow-hidden rounded-t-[var(--mk-r-3)] bg-[#0d0d10] shadow-[var(--mk-shadow-window)] sm:inset-x-10 sm:top-10"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_60%_at_45%_45%,rgb(255_255_255/0.07),transparent_70%)]" />
-      <svg viewBox="0 0 100 100" className="absolute left-[38%] top-[44%] h-[80%] w-auto -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_60%_at_50%_42%,rgb(255_255_255/0.07),transparent_70%)]" />
+      <svg viewBox="0 0 100 100" className="absolute inset-x-0 top-[6%] mx-auto h-[62%] w-auto">
         {BONES.map(([a, b], k) => (
           <motion.line
             key={k}
@@ -102,10 +102,11 @@ function FeedbackDemo() {
           />
         ))}
       </svg>
+      <div className="absolute inset-x-0 bottom-[12%] flex justify-center">
       <motion.div
         layout={!reduce}
         transition={SPRING}
-        className="absolute bottom-6 left-6 flex h-10 items-center gap-3 rounded-full bg-white px-4 text-[14px] shadow-[0_8px_24px_-8px_rgb(0_0_0/0.6)]"
+        className="flex h-10 items-center gap-3 rounded-full bg-white px-4 text-[14px] shadow-[0_8px_24px_-8px_rgb(0_0_0/0.6)]"
       >
         <BlurSwap swapKey={read ? "read" : "wait"} className="gap-3">
           {read ? (
@@ -130,6 +131,7 @@ function FeedbackDemo() {
           </motion.span>
         )}
       </motion.div>
+      </div>
     </div>
   );
 }

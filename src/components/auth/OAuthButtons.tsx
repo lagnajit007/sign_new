@@ -61,7 +61,7 @@ export function OAuthButtons({ mode, redirectTo = "/dashboard" }: { mode: "sign-
           type="button"
           onClick={() => go(strategy)}
           disabled={busy !== null}
-          className="inline-flex h-12 items-center justify-center gap-2.5 rounded-full bg-white text-[15px] font-medium text-fg shadow-[inset_0_0_0_1px_var(--sj-line-strong)] transition-colors hover:bg-zinc-50 disabled:opacity-70"
+          className="inline-flex h-11 items-center justify-center gap-2.5 rounded-lg bg-white text-[15px] font-medium text-fg shadow-[inset_0_0_0_1px_var(--sj-line-strong)] transition-colors hover:bg-zinc-50 disabled:opacity-70"
         >
           {busy === strategy ? <Loader2 className="size-4 animate-spin text-fg-subtle" aria-hidden /> : <Mark />}
           {label}
