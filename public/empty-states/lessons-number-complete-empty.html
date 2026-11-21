@@ -4,6 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <script>
+    // Embedded in the dashboard (same origin): take its theme before first paint,
+    // so the figure never flashes the OS theme. Opened on its own, the OS decides.
+    try {
+      if (window.parent !== window) {
+        document.documentElement.dataset.theme = window.parent.document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+      }
+    } catch (e) {}
+  </script>
   <title>Fig 14 · Number review board · Sanjog</title>
   <style>
     :root { color-scheme: light; --plate: #fafafa; --body: #fff; --deck: #fafafa; --line: #a1a1aa; --detail: #d4d4d8; --ink: #3f3f46; --muted: #a1a1aa; --live: #6d4aff; --caption: #71717a; }

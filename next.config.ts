@@ -28,7 +28,9 @@ const nextConfig: NextConfig = {
       headers: [
         {
           key: 'X-Frame-Options',
-          value: 'DENY',
+          // The app embeds its own interactive empty-state HTML files. Keep
+          // cross-origin framing blocked while allowing those same-origin frames.
+          value: 'SAMEORIGIN',
         },
         {
           key: 'X-Content-Type-Options',
