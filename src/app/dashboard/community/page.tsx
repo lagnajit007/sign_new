@@ -1,6 +1,7 @@
 "use client";
 
 import { useApi } from "@/hooks/use-api";
+import { IsoFigure } from "@/components/iso/IsoFigure";
 import { Avatar } from "@/components/app/avatar";
 import { ButtonLink, DemoBadge, EmptyState, ErrorState, PageBody, Panel, Skeleton, timeAgo } from "@/components/app/primitives";
 
@@ -35,7 +36,11 @@ export default function CommunityPage() {
             ))}
           </div>
         ) : (data?.feed.length ?? 0) === 0 ? (
-          <EmptyState title="No activity yet" description="When learners sign letters and numbers correctly, it shows up here." />
+          <EmptyState
+            title="No activity yet"
+            description="When learners sign letters and numbers correctly, it shows up here."
+            illustration={<IsoFigure name="community-empty" />}
+          />
         ) : (
           <ul>
             {data!.feed.map((a) => (

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckCircle2, Hand, Sparkles, Target } from "lucide-react";
+import { CheckCircle2, Sparkles, Target } from "lucide-react";
 import { Flame } from "@/components/art/flame";
 import { useApi } from "@/hooks/use-api";
 import { ActivityBars } from "@/components/app/charts";
+import { IsoFigure } from "@/components/iso/IsoFigure";
 import {
   Badge,
   ButtonLink,
@@ -110,8 +111,9 @@ export default function ProgressPage() {
           <Skeleton className="h-[200px] w-full" />
         ) : rangeAttempts === 0 ? (
           <EmptyState
-            icon={<Hand />}
             title="No attempts in this period"
+            description="Mark a day on the calendar to see how a steady practice habit grows."
+            illustration={<IsoFigure name="progress-activity" />}
             action={<ButtonLink variant="primary" href="/dashboard/lessons">Practise a sign</ButtonLink>}
           />
         ) : (
@@ -124,24 +126,41 @@ export default function ProgressPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="Course completion">
-          <ul className="space-y-4">
-            {(data?.completionData ?? []).map((c) => (
-              <li key={c.id}>
-                <div className="mb-1.5 flex justify-between text-[13px]">
-                  <span className="text-fg">{c.name}</span>
-                  <span className="tabular-nums text-fg-subtle">
-                    {c.completed}/{c.total}
-                  </span>
-                </div>
-                <ProgressBar value={(c.completed / c.total) * 100} label={`${c.name} completion`} />
-              </li>
-            ))}
-          </ul>
+          {loading && !data ? (
+            <Skeleton className="h-[280px] w-full" />
+          ) : s?.lessonsCompleted === 0 ? (
+            <EmptyState
+              title="No signs mastered yet"
+              description="Choose a tile, then start with a sign that feels familiar."
+              illustration={<IsoFigure name="progress-mastery" />}
+              action={<ButtonLink variant="primary" href="/dashboard/lessons">Browse lessons</ButtonLink>}
+            />
+          ) : (
+            <ul className="space-y-4">
+              {(data?.completionData ?? []).map((c) => (
+                <li key={c.id}>
+                  <div className="mb-1.5 flex justify-between text-[13px]">
+                    <span className="text-fg">{c.name}</span>
+                    <span className="tabular-nums text-fg-subtle">
+                      {c.completed}/{c.total}
+                    </span>
+                  </div>
+                  <ProgressBar value={(c.completed / c.total) * 100} label={`${c.name} completion`} />
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
 
         <Panel title="Needs practice" description="Attempted but not yet mastered, lowest confidence first" className="lg:col-span-2" bodyClassName="p-0">
-          {(data?.weakSigns.length ?? 0) === 0 ? (
-            <EmptyState title="Nothing flagged" description="Signs you attempt but haven't mastered will appear here." />
+          {loading && !data ? (
+            <Skeleton className="m-4 h-[240px]" />
+          ) : (data?.weakSigns.length ?? 0) === 0 ? (
+            <EmptyState
+              title="Nothing flagged"
+              description="Signs you attempt but haven't mastered will appear here."
+              illustration={<IsoFigure name="progress-needs-practice" />}
+            />
           ) : (
             <table className="w-full text-[13px]">
               <thead>
@@ -175,8 +194,15 @@ export default function ProgressPage() {
       </div>
 
       <Panel title="Recent attempts" bodyClassName="p-0">
-        {(data?.recentActivity.length ?? 0) === 0 ? (
-          <EmptyState title="No attempts yet" />
+        {loading && !data ? (
+          <Skeleton className="m-4 h-[220px]" />
+        ) : (data?.recentActivity.length ?? 0) === 0 ? (
+          <EmptyState
+            title="No attempts yet"
+            description="Your practice history will appear here."
+            illustration={<IsoFigure name="progress-recent-attempts" />}
+            action={<ButtonLink variant="primary" href="/dashboard/lessons">Practise a sign</ButtonLink>}
+          />
         ) : (
           <table className="w-full text-[13px]">
             <thead>

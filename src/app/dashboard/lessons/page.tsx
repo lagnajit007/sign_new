@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
-import { Badge, ErrorState, PageBody, Panel, ProgressBar, Skeleton } from "@/components/app/primitives";
+import { IsoFigure } from "@/components/iso/IsoFigure";
+import { Badge, EmptyState, ErrorState, PageBody, Panel, ProgressBar, Skeleton } from "@/components/app/primitives";
 import { cn } from "@/lib/utils";
 
 interface ProgressResponse {
@@ -79,10 +80,34 @@ export default function LessonsPage() {
                 )
               }
             >
-              {visible.length === 0 ? (
-                <p className="py-6 text-center text-xs text-fg-subtle">
-                  {filter === "mastered" ? "Nothing mastered here yet." : "Every sign in this set is mastered."}
-                </p>
+              {loading && !data ? (
+                <Skeleton className="h-[240px] w-full" />
+              ) : visible.length === 0 ? (
+                <EmptyState
+                  title={
+                    filter === "mastered"
+                      ? `No ${set.id === "alphabet" ? "letters" : "numbers"} mastered yet`
+                      : `Every ${set.id === "alphabet" ? "letter" : "number"} is mastered`
+                  }
+                  description={
+                    filter === "mastered"
+                      ? "Pick a tile to preview a sign you can learn next."
+                      : "Choose a tile to revisit any sign in this set."
+                  }
+                  illustration={
+                    <IsoFigure
+                      name={
+                        set.id === "alphabet"
+                          ? filter === "mastered"
+                            ? "lessons-alpha-mastered-empty"
+                            : "lessons-alpha-complete-empty"
+                          : filter === "mastered"
+                            ? "lessons-number-mastered-empty"
+                            : "lessons-number-complete-empty"
+                      }
+                    />
+                  }
+                />
               ) : (
                 <ul className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
                   {visible.map((sign) => {

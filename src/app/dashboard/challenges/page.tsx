@@ -1,8 +1,9 @@
 "use client";
 
 import { Check, Clock } from "lucide-react";
+import { IsoFigure } from "@/components/iso/IsoFigure";
 import { useApi } from "@/hooks/use-api";
-import { Badge, ErrorState, PageBody, Panel, ProgressBar, Skeleton } from "@/components/app/primitives";
+import { Badge, EmptyState, ErrorState, PageBody, Panel, ProgressBar, Skeleton } from "@/components/app/primitives";
 
 interface Challenge {
   id: string;
@@ -99,9 +100,18 @@ export default function ChallengesPage() {
       <p className="max-w-2xl text-[13px] text-fg-muted">
         Challenges track your real practice automatically. Daily ones reset at midnight UTC, weekly ones on Monday. Each reward is paid once per period.
       </p>
-      {loading && !data
-        ? [0, 1].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)
-        : groups.map((g) => (
+      {loading && !data ? (
+        [0, 1].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)
+      ) : groups.length === 0 ? (
+        <Panel>
+          <EmptyState
+            title="No challenges available"
+            description="New practice challenges will appear here when they’re ready."
+            illustration={<IsoFigure name="challenges-empty" />}
+          />
+        </Panel>
+      ) : (
+        groups.map((g) => (
             <Panel
               key={g.period}
               title={PERIOD_TITLES[g.period]}
@@ -118,7 +128,8 @@ export default function ChallengesPage() {
                 ))}
               </ul>
             </Panel>
-          ))}
+        ))
+      )}
     </PageBody>
   );
 }

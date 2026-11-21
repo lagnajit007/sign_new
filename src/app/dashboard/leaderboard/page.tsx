@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Flame } from "@/components/art/flame";
 import { useApi } from "@/hooks/use-api";
+import { IsoFigure } from "@/components/iso/IsoFigure";
 import { Avatar } from "@/components/app/avatar";
 import { Badge, DemoBadge, EmptyState, ErrorState, PageBody, Panel, Skeleton } from "@/components/app/primitives";
 import { cn } from "@/lib/utils";
@@ -97,6 +98,7 @@ export default function LeaderboardPage() {
           <EmptyState
             title={scope === "weekly" ? "No one has practised this week" : "No learners yet"}
             description="Correct signs earn XP and put you on the board."
+            illustration={<IsoFigure name="leaderboard-empty" />}
           />
         ) : (
           <div className="overflow-x-auto">

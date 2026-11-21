@@ -1,0 +1,193 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const outDir = path.join(root, "public", "empty-states");
+
+const figures = [
+  { file: "dashboard-practice.html", fig: 1, name: "Practice stand", hint: "Pick a letter, press start", kind: "desk", labels: ["A", "B", "L", "START"], mode: "start", screen: "A", readout: "idle · target A", result: "ready to practise · hold up {{label}}" },
+  { file: "dashboard-course-complete.html", fig: 2, name: "Course board", hint: "Press a sign to review it", kind: "letter-grid", labels: [..."ABCL"], mode: "select", screen: "A–Z · 0–9 mastered", readout: "36 signs mastered", result: "review {{label}}" },
+  { file: "dashboard-leaderboard.html", fig: 3, name: "Overview podium", hint: "Press your place", kind: "podium", labels: ["YOU"], mode: "counter", screen: "A place is waiting", readout: "you · 0 xp · unranked", result: "you · {{count}} xp" },
+  { file: "dashboard-challenges.html", fig: 4, name: "Challenge slate", hint: "Press a card to preview it", kind: "challenge", labels: ["DAILY", "WEEKLY", "MILESTONE"], mode: "select", screen: "No open challenges", readout: "all caught up", result: "{{label}} · ready when you are" },
+  { file: "dashboard-community.html", fig: 5, name: "Community log", hint: "Press share to make a sample", kind: "feed", labels: ["SHARE"], mode: "select", screen: "No recent activity", readout: "quiet feed", result: "sample · signed A · 92%" },
+  { file: "dashboard-achievements.html", fig: 6, name: "Achievement shelf", hint: "Press the badge", kind: "awards", labels: ["FIRST STEP", "STEADY", "SKILLED"], mode: "select", screen: "Your first badge is ahead", readout: "0 unlocked", result: "{{label}} · first step" },
+  { file: "progress-activity.html", fig: 7, name: "Practice calendar", hint: "Press a day to mark it", kind: "calendar", labels: ["M", "T", "W", "T", "F", "S", "S"], mode: "mark", screen: "A streak starts with one day", readout: "no days yet · streak 0", result: "day {{label}} · marked" },
+  { file: "progress-needs-practice.html", fig: 8, name: "Sign guide", hint: "Press a sign to preview it", kind: "letter-grid", labels: [..."ABCDE"], mode: "select", screen: "No signs need extra practice", readout: "choose a sign to begin", result: "try {{label}} · camera ready" },
+  { file: "progress-recent-attempts.html", fig: 9, name: "Attempt ledger", hint: "Press a row for a sample", kind: "rows", labels: ["LETTER", "NUMBER", "RETRY"], mode: "select", screen: "No attempts recorded", readout: "history is clear", result: "sample · {{label}} · 94%" },
+  { file: "progress-mastery.html", fig: 10, name: "Sign tray", hint: "Press a tile to light it", kind: "sign-grid", labels: [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"], mode: "toggle", screen: "0 / 36 mastered", readout: "0 / 36 · next A", result: "{{count}} / 36 · {{label}} lit" },
+  { file: "lessons-alpha-mastered-empty.html", fig: 11, name: "Letter shelf", hint: "Press a letter to preview", kind: "letter-grid", labels: [..."ABCDE"], mode: "select", screen: "No mastered letters yet", readout: "alphabet · 0 mastered", result: "letter {{label}} · ready to learn" },
+  { file: "lessons-number-mastered-empty.html", fig: 12, name: "Number shelf", hint: "Press a number to preview", kind: "number-grid", labels: [..."0123456789"], mode: "select", screen: "No mastered numbers yet", readout: "numbers · 0 mastered", result: "number {{label}} · ready to learn" },
+  { file: "lessons-alpha-complete-empty.html", fig: 13, name: "Letter review board", hint: "Press a letter to revisit it", kind: "letter-grid", labels: [..."ABCDE"], mode: "select", screen: "Every letter is mastered", readout: "A–Z · complete", result: "review letter {{label}}" },
+  { file: "lessons-number-complete-empty.html", fig: 14, name: "Number review board", hint: "Press a number to revisit it", kind: "number-grid", labels: [..."0123456789"], mode: "select", screen: "Every number is mastered", readout: "0–9 · complete", result: "review number {{label}}" },
+  { file: "achievements-empty.html", fig: 15, name: "Achievement cabinet", hint: "Press a seal to preview it", kind: "awards", labels: ["FIRST", "PRACTICE", "STREAK"], mode: "select", screen: "No badges are available yet", readout: "0 achievements", result: "{{label}} · badge preview" },
+  { file: "challenges-empty.html", fig: 16, name: "Challenge board", hint: "Press a slot to preview", kind: "challenge", labels: ["DAILY", "WEEKLY", "MONTHLY"], mode: "select", screen: "No challenges are listed", readout: "0 active challenges", result: "{{label}} · +10 XP" },
+  { file: "community-empty.html", fig: 17, name: "Shared activity", hint: "Press share to preview", kind: "feed", labels: ["SHARE"], mode: "select", screen: "No shared signs yet", readout: "your feed is quiet", result: "you · signed A · 92%" },
+  { file: "leaderboard-empty.html", fig: 18, name: "Leaderboard podium", hint: "Press your block", kind: "podium", labels: ["YOU"], mode: "counter", screen: "Three places are open", readout: "you · 0 xp · unranked", result: "you · {{count}} xp · keep practising" },
+];
+
+const htmlEscape = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+
+function documentFor(scene) {
+  const serialized = JSON.stringify(scene).replaceAll("</", "<\\/");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Fig ${scene.fig} · ${htmlEscape(scene.name)} · Sanjog</title>
+  <style>
+    :root { color-scheme: light; --plate: #fafafa; --body: #fff; --deck: #fafafa; --line: #a1a1aa; --detail: #d4d4d8; --ink: #3f3f46; --muted: #a1a1aa; --live: #6d4aff; --caption: #71717a; }
+    :root[data-theme="dark"] { color-scheme: dark; --plate: #18181b; --body: #18181b; --deck: #1f1f23; --line: #52525b; --detail: #3f3f46; --ink: #d4d4d8; --muted: #71717a; --live: #a78bfa; --caption: #a1a1aa; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --plate: #18181b; --body: #18181b; --deck: #1f1f23; --line: #52525b; --detail: #3f3f46; --ink: #d4d4d8; --muted: #71717a; --live: #a78bfa; --caption: #a1a1aa; } }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { background: transparent; color: var(--ink); font: 500 10px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .plate { display: flex; width: 100%; height: 100%; min-height: 250px; flex-direction: column; gap: 3px; overflow: hidden; border-radius: 12px; background: var(--plate); padding: 9px 11px; }
+    .cap { display: flex; min-height: 15px; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; color: var(--caption); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+    .cap span:first-child { text-transform: none; }
+    .readout { color: var(--ink); letter-spacing: .01em; text-transform: none; }
+    svg { display: block; width: 100%; min-height: 0; flex: 1; outline: none; touch-action: manipulation; }
+    svg:focus-visible { border-radius: 8px; box-shadow: 0 0 0 2px var(--live); }
+    .face { fill: var(--body); stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+    .face.top { fill: var(--deck); }
+    .face.glass { fill: var(--deck); stroke: var(--detail); }
+    .detail { fill: none; stroke: var(--detail); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .ink { fill: var(--ink); font-weight: 500; }
+    .soft { fill: var(--muted); }
+    .live { fill: var(--live); stroke: var(--live); }
+    .live-line { fill: none; stroke: var(--live); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+    .press { cursor: pointer; transition: transform 60ms ease-out; }
+    .press.down { transform: translateY(4px); }
+    .press.selected .face.top, .press.down .face { stroke: var(--live); }
+    .slot { fill: none; stroke: var(--live); stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+    text { font-family: inherit; }
+    @media (prefers-reduced-motion: reduce) { .press { transition: none; } }
+  </style>
+</head>
+<body>
+  <main class="plate">
+    <header class="cap"><span>Fig ${scene.fig}</span><span>${htmlEscape(scene.name)}</span></header>
+    <svg viewBox="0 0 380 280" role="img" tabindex="0" aria-label="${htmlEscape(scene.aria)}"></svg>
+    <footer class="cap"><span>${htmlEscape(scene.hint)}</span><output class="readout" aria-live="polite">${htmlEscape(scene.readout)}</output></footer>
+  </main>
+  <script>
+    (() => {
+      const scene = ${serialized};
+      const C = Math.cos(Math.PI / 6), S = Math.sin(Math.PI / 6), OX = 172, OY = 75;
+      const P = (x, y, z) => [(x - y) * C + OX, (x + y) * S - z + OY];
+      const D = (x, y, z) => [(x - y) * C, (x + y) * S - z];
+      const plane = (O, U, V) => { const o = P(...O), u = D(...U), v = D(...V); return 'matrix(' + u[0] + ' ' + u[1] + ' ' + v[0] + ' ' + v[1] + ' ' + o[0] + ' ' + o[1] + ')'; };
+      const TOP = (x, y, z) => plane([x, y, z], [1, 0, 0], [0, 1, 0]);
+      const FRONT = (x, y, z) => plane([x, y, z], [1, 0, 0], [0, 0, -1]);
+      const SIDE = (x, y, z) => plane([x, y, z], [0, -1, 0], [0, 0, -1]);
+      const esc = (text) => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+      const rect = (transform, w, h, r = 0, cls = 'face') => '<g transform="' + transform + '"><rect class="' + cls + '" width="' + w + '" height="' + h + '" rx="' + r + '"/></g>';
+      const box = (x, y, z, w, d, h, r = 0, topCls = 'face top') => rect(SIDE(x + w, y + d, z + h), d, h, Math.min(r, h / 4)) + rect(FRONT(x, y + d, z + h), w, h, Math.min(r, h / 4)) + rect(TOP(x, y, z + h), w, d, r, topCls);
+      const svg = document.querySelector('svg');
+      const output = document.querySelector('.readout');
+      const state = { chosen: -1, marked: new Set(), count: 0, ready: false, target: scene.labels[0] };
+      const keys = Object.fromEntries(scene.labels.map((label, i) => [String(label).toLowerCase(), i]));
+      let releaseTimer;
+      const setDisplay = (text, active = false) => '<g transform="' + FRONT(34, 20, 88) + '"><rect class="face glass" x="4" y="6" width="178" height="46" rx="4"/><text class="soft" x="12" y="17" font-size="7" letter-spacing="1">SANJOG · ' + esc(scene.name.toUpperCase()) + '</text><text class="' + (active ? 'live' : 'ink') + '" x="12" y="27" font-size="9">' + esc(text) + '</text></g>';
+      const tile = (index, label, x, y, w = 27, d = 24, h = 8) => {
+        const isOn = state.marked.has(index) || state.chosen === index;
+        const cls = 'press' + (isOn ? ' selected' : '');
+        return '<g class="' + cls + '" data-part="' + index + '" role="button" tabindex="0" aria-label="' + esc(label) + '">' + box(x, y, 10, w, d, isOn ? h + 3 : h, 3) + '<g transform="' + TOP(x, y, 10 + (isOn ? h + 3 : h)) + '"><text class="' + (isOn ? 'live' : 'ink') + '" x="' + (w / 2) + '" y="' + Math.min(d - 3, 15) + '" font-size="' + (label.length > 5 ? 5 : label.length > 3 ? 6 : 9) + '" text-anchor="middle">' + esc(label) + '</text></g></g>';
+      };
+      const drawItems = (positions) => positions.map(([i, label, x, y, w, d, h]) => tile(i, label, x, y, w, d, h)).join('');
+      const gridPositions = (cols, cellW, cellD, startX = 12, startY = 11, dx = cellW + 3, dy = cellD + 4) => scene.labels.map((label, i) => [i, label, startX + (i % cols) * dx, startY + Math.floor(i / cols) * dy, cellW, cellD, 6]);
+      const listPositions = () => scene.labels.map((label, i) => [i, label, 18, 44 + i * 26, 156, 25, 7]);
+      function draw() {
+        let art = box(0, 0, 0, 220, 132, 10, 8);
+        art += box(15, 8, 10, 190, 12, 8, 5, 'face top');
+        art += box(34, 10, 18, 186, 10, 70, 5);
+        const screenText = scene.mode === 'start' ? (state.ready ? 'READY · HOLD UP ' + state.target : 'TARGET · ' + state.target) : (state.display || scene.screen);
+        art += setDisplay(screenText, state.ready || state.chosen >= 0 || state.marked.size > 0 || state.count > 0);
+        if (scene.kind === 'desk') {
+          art += drawItems(scene.labels.map((label, i) => [i, label, 18 + i * 46, 84, 37, 28, 8]));
+        } else if (scene.kind === 'calendar') {
+          art += box(9, 9, 10, 194, 88, 6, 7);
+          art += drawItems(gridPositions(7, 22, 35, 9, 52, 27, 4));
+        } else if (scene.kind === 'sign-grid') {
+          art += box(8, 8, 10, 204, 108, 5, 7);
+          art += drawItems(gridPositions(9, 19, 20, 6, 30, 22, 24));
+        } else if (scene.kind === 'letter-grid' || scene.kind === 'number-grid') {
+          art += box(15, 10, 10, 184, 94, 6, 7);
+          const cols = scene.labels.length > 6 ? 5 : Math.min(5, scene.labels.length);
+          art += drawItems(gridPositions(cols, 28, 25, 15, 46, 34, 30));
+        } else if (scene.kind === 'podium') {
+          art += box(15, 50, 10, 47, 42, 30, 4) + box(77, 44, 10, 47, 42, 51, 4) + box(139, 55, 10, 47, 42, 22, 4);
+          art += '<g transform="' + TOP(15, 50, 40) + '"><text class="soft" x="23" y="25" font-size="10" text-anchor="middle">2</text></g><g transform="' + TOP(77, 44, 61) + '"><text class="soft" x="23" y="25" font-size="10" text-anchor="middle">1</text></g><g transform="' + TOP(139, 55, 32) + '"><text class="soft" x="23" y="25" font-size="10" text-anchor="middle">3</text></g>';
+          art += drawItems([[0, scene.labels[0], 83, 96, 38, 28, 8]]);
+        } else if (scene.kind === 'rows' || scene.kind === 'challenge' || scene.kind === 'feed') {
+          art += box(18, 10, 10, 182, 88, 6, 7);
+          art += drawItems(listPositions());
+        } else if (scene.kind === 'awards') {
+          art += box(20, 9, 10, 180, 68, 7, 7);
+          art += drawItems(scene.labels.map((label, i) => [i, label, 25 + i * 55, 42, 44, 34, 8]));
+        }
+        svg.innerHTML = art;
+        let status = scene.readout;
+        if (scene.mode === 'counter' && state.count > 0) status = scene.result.replace('{{count}}', String(state.count));
+        else if (scene.mode === 'start') status = state.ready ? 'ready · hold up ' + state.target : 'idle · target ' + state.target;
+        else if (scene.mode === 'mark' && state.marked.size > 0) {
+          let run = 0, longest = 0, previous = -2;
+          [...state.marked].sort((a, b) => a - b).forEach((day) => { run = day === previous + 1 ? run + 1 : 1; longest = Math.max(longest, run); previous = day; });
+          status = state.marked.size + ' marked · streak ' + longest;
+        }
+        else if (scene.mode === 'toggle' && state.marked.size > 0) status = scene.result.replace('{{count}}', String(state.marked.size)).replace('{{label}}', scene.labels[[...state.marked].at(-1)]);
+        else if (state.chosen >= 0) status = scene.result.replaceAll('{{label}}', scene.labels[state.chosen]).replace('{{count}}', String(state.marked.size || state.chosen + 1));
+        output.textContent = status;
+      }
+      function press(index, keyboard = false) {
+        if (index < 0 || index >= scene.labels.length) return;
+        const label = scene.labels[index];
+        if (scene.mode === 'counter') { state.count += 10; state.display = '+' + state.count + ' XP'; }
+        else if (scene.mode === 'mark' || scene.mode === 'toggle') {
+          if (state.marked.has(index)) state.marked.delete(index); else state.marked.add(index);
+          state.display = scene.result.replaceAll('{{label}}', label).replace('{{count}}', String(state.marked.size));
+        } else if (scene.mode === 'start' && label === 'START') {
+          state.ready = true; state.display = 'READY · HOLD UP ' + state.target;
+        } else {
+          state.chosen = index;
+          if (scene.mode === 'start') { state.target = label; state.ready = false; }
+          state.display = scene.result.replaceAll('{{label}}', label).replace('{{count}}', String(state.chosen + 1));
+        }
+        draw();
+        const part = svg.querySelector('[data-part="' + index + '"]');
+        if (part) { part.classList.add('down'); clearTimeout(releaseTimer); releaseTimer = setTimeout(() => part.classList.remove('down'), 120); }
+        if (keyboard) svg.focus({ preventScroll: true });
+      }
+      svg.addEventListener('click', (event) => {
+        const part = event.target.closest('[data-part]');
+        if (part) press(Number(part.getAttribute('data-part')));
+      });
+      svg.addEventListener('keydown', (event) => {
+        if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+        const focusedPart = event.target.closest('[data-part]');
+        let index = focusedPart ? Number(focusedPart.getAttribute('data-part')) : -1;
+        if (event.key === 'Enter' || event.key === ' ') { if (index < 0) index = 0; event.preventDefault(); press(index, true); return; }
+        const keyIndex = keys[event.key.toLowerCase()];
+        if (keyIndex !== undefined) { event.preventDefault(); press(keyIndex, true); }
+      });
+      window.addEventListener('message', (event) => {
+        if (event.source !== window.parent || !event.data || event.data.type !== 'sanjog-theme') return;
+        document.documentElement.dataset.theme = event.data.theme === 'dark' ? 'dark' : 'light';
+      });
+      draw();
+    })();
+  </script>
+</body>
+</html>
+`;
+}
+
+await mkdir(outDir, { recursive: true });
+for (const figure of figures) {
+  const aria = `${figure.name}: ${figure.hint}; press an illustrated part to update the readout`;
+  const scene = { ...figure, aria, screen: figure.screen, readout: figure.readout };
+  await writeFile(path.join(outDir, figure.file), documentFor(scene), "utf8");
+}
+console.log(`Generated ${figures.length} self-contained figures in ${outDir}`);

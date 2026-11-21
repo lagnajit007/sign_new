@@ -1,4 +1,4 @@
-import { Award, CheckCircle2, Hand, Sparkles, Target } from "lucide-react";
+import { CheckCircle2, Hand, Sparkles, Target } from "lucide-react";
 import { Flame } from "@/components/art/flame";
 import { redirect } from "next/navigation";
 import { getOrCreateUser } from "@/lib/user";
@@ -9,6 +9,7 @@ import { activityUserWhere, displayName, leaderboardUserWhere, publicUserSelect 
 import { challengeCount, completedThisPeriod } from "@/lib/challenges";
 import { Avatar } from "@/components/app/avatar";
 import { ActivityBars, Sparkline } from "@/components/app/charts";
+import { IsoFigure } from "@/components/iso/IsoFigure";
 import {
   Badge,
   ButtonLink,
@@ -162,9 +163,9 @@ export default async function OverviewPage() {
         >
           {stats.totalAttempts === 0 ? (
             <EmptyState
-              icon={<Hand />}
               title="No practice yet"
               description="Each sign you try with the camera shows up here."
+              illustration={<IsoFigure name="dashboard-practice" />}
               action={<ButtonLink variant="primary" href="/dashboard/lessons">Browse lessons</ButtonLink>}
             />
           ) : (
@@ -202,7 +203,11 @@ export default async function OverviewPage() {
               </ButtonLink>
             </div>
           ) : (
-            <EmptyState icon={<Award />} title="Course complete" description="You've mastered every sign. Keep practising to hold your streak." />
+            <EmptyState
+              title="Course complete"
+              description="You've mastered every sign. Keep practising to hold your streak."
+              illustration={<IsoFigure name="dashboard-course-complete" />}
+            />
           )}
         </Panel>
       </div>
@@ -215,36 +220,43 @@ export default async function OverviewPage() {
           action={<ButtonLink variant="ghost" href="/dashboard/leaderboard">See all</ButtonLink>}
           bodyClassName="p-0"
         >
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-fg-subtle">
-                <th className="w-10 px-4 py-2 font-normal">#</th>
-                <th className="px-2 py-2 font-normal">Learner</th>
-                <th className="hidden px-2 py-2 font-normal sm:table-cell">Level</th>
-                <th className="hidden px-2 py-2 font-normal sm:table-cell">Streak</th>
-                <th className="px-4 py-2 text-right font-normal">XP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaders.map((u, i) => (
-                <tr key={u.id} className={u.id === user.id ? "bg-brand-tint" : "border-b border-line last:border-0"}>
-                  <td className="px-4 py-2.5 tabular-nums text-fg-subtle">{i + 1}</td>
-                  <td className="px-2 py-2.5">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Avatar name={displayName(u)} avatarId={u.avatarId} />
-                      <span className="truncate text-fg">{displayName(u)}</span>
-                      {u.id === user.id && <Badge tone="brand">You</Badge>}
-                      {u.isDemo && <DemoBadge />}
-                    </span>
-                  </td>
-                  <td className="hidden px-2 py-2.5 tabular-nums text-fg-muted sm:table-cell">{levelForXp(u.xp)}</td>
-                  <td className="hidden px-2 py-2.5 tabular-nums text-fg-muted sm:table-cell">{u.streakDays}d</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-fg">{u.xp.toLocaleString()}</td>
+          {leaders.length === 0 ? (
+            <EmptyState
+              title="No learners yet"
+              description="Be the first on the board."
+              illustration={<IsoFigure name="dashboard-leaderboard" />}
+            />
+          ) : (
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-line text-left text-xs text-fg-subtle">
+                  <th className="w-10 px-4 py-2 font-normal">#</th>
+                  <th className="px-2 py-2 font-normal">Learner</th>
+                  <th className="hidden px-2 py-2 font-normal sm:table-cell">Level</th>
+                  <th className="hidden px-2 py-2 font-normal sm:table-cell">Streak</th>
+                  <th className="px-4 py-2 text-right font-normal">XP</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {leaders.length === 0 && <EmptyState title="No learners yet" description="Be the first on the board." />}
+              </thead>
+              <tbody>
+                {leaders.map((u, i) => (
+                  <tr key={u.id} className={u.id === user.id ? "bg-brand-tint" : "border-b border-line last:border-0"}>
+                    <td className="px-4 py-2.5 tabular-nums text-fg-subtle">{i + 1}</td>
+                    <td className="px-2 py-2.5">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Avatar name={displayName(u)} avatarId={u.avatarId} />
+                        <span className="truncate text-fg">{displayName(u)}</span>
+                        {u.id === user.id && <Badge tone="brand">You</Badge>}
+                        {u.isDemo && <DemoBadge />}
+                      </span>
+                    </td>
+                    <td className="hidden px-2 py-2.5 tabular-nums text-fg-muted sm:table-cell">{levelForXp(u.xp)}</td>
+                    <td className="hidden px-2 py-2.5 tabular-nums text-fg-muted sm:table-cell">{u.streakDays}d</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-fg">{u.xp.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Panel>
 
         <Panel
@@ -252,7 +264,11 @@ export default async function OverviewPage() {
           action={<ButtonLink variant="ghost" href="/dashboard/challenges">All</ButtonLink>}
         >
           {openChallenges.length === 0 ? (
-            <EmptyState title="All caught up" description="New daily challenges start at midnight UTC." />
+            <EmptyState
+              title="All caught up"
+              description="New daily challenges start at midnight UTC."
+              illustration={<IsoFigure name="dashboard-challenges" />}
+            />
           ) : (
             <ul className="space-y-4">
               {openChallenges.map((c) => (
@@ -285,7 +301,11 @@ export default async function OverviewPage() {
           bodyClassName="p-0"
         >
           {feed.length === 0 ? (
-            <EmptyState title="It's quiet here" description="Signs other learners master will show up here." />
+            <EmptyState
+              title="It's quiet here"
+              description="Signs other learners master will show up here."
+              illustration={<IsoFigure name="dashboard-community" />}
+            />
           ) : (
             <ul>
               {feed.map((a) => (
@@ -305,7 +325,11 @@ export default async function OverviewPage() {
 
         <Panel title="Recent achievements" action={<ButtonLink variant="ghost" href="/dashboard/achievements">All</ButtonLink>}>
           {recentUnlocks.length === 0 ? (
-            <EmptyState icon={<Award />} title="None yet" description="Master your first sign to earn “First Step”." />
+            <EmptyState
+              title="None yet"
+              description="Master your first sign to earn “First Step”."
+              illustration={<IsoFigure name="dashboard-achievements" />}
+            />
           ) : (
             <ul className="space-y-3">
               {recentUnlocks.map((u) => (

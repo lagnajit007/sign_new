@@ -129,17 +129,20 @@ export function EmptyState({
   description,
   action,
   icon,
+  illustration,
   className,
 }: {
   title: string;
   description?: ReactNode;
   action?: ReactNode;
   icon?: ReactNode;
+  illustration?: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-2 px-6 py-10 text-center", className)}>
+    <div className={cn("flex flex-col items-center justify-center gap-2 px-6 py-10 text-center", illustration && "py-5", className)}>
       {icon && <div className="mb-1 grid size-9 place-items-center rounded-lg bg-subtle text-fg-subtle [&_svg]:size-4">{icon}</div>}
+      {illustration && <div className="mb-1 flex w-full justify-center">{illustration}</div>}
       <p className="text-sm font-medium text-fg">{title}</p>
       {description && <p className="max-w-sm text-xs leading-relaxed text-fg-subtle">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
